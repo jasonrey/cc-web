@@ -34,7 +34,6 @@ import {
   killHandler as terminalKill,
   listHandler as terminalList,
 } from './terminal.js';
-import { handleUpgrade } from './upgrade.js';
 
 export const handlers = {
   get_projects: getProjects,
@@ -62,5 +61,4 @@ export const handlers = {
   'files:delete': handleFilesDelete,
   'files:move': handleFilesMove,
   restart: handleRestart,
-  upgrade: handleUpgrade,
 };
