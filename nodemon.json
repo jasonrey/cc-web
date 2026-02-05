@@ -1,0 +1,8 @@
+{
+  "watch": false,
+  "ext": "DISABLED",
+  "ignore": ["*"],
+  "delay": "500",
+  "exec": "node -r dotenv/config server/index.js 2>&1 | tee dev.log",
+  "signal": "SIGTERM"
+}

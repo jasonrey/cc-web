@@ -1,0 +1,192 @@
+# Changelog
+
+All notable changes to Claude Web.
+
+## 2025-02-05 - Model Badges & MCP Integration
+
+### Model Badges on Assistant Responses
+- Model badges now displayed on Claude's responses (text and tool use)
+- Shows which model handled each response: Sonnet, Opus, Haiku, or Opus Plan
+- Especially useful with Opus Plan mode to see plan (Opus) vs implementation (Sonnet)
+- Model information extracted from SDK's JSONL format
+- Works for both real-time messages and loaded history
+- Badge appears in footer for text messages, header for tool use
+
+### MCP (Model Context Protocol) Phase 1
+- Auto-detection and loading of MCP servers from CLI config
+- Three-level scope merging: user (`~/.claude.json`) → project → local (`.mcp.json`)
+- OAuth token injection with expiry checking (5 minute buffer)
+- Credentials loaded from `~/.claude/.credentials.json`
+- Enhanced tool display for MCP tools (dbhub, notion, playwright)
+- Modular MCP tool structure in `src/utils/mcp-tools/` for maintainability
+- MCP servers passed to Claude Agent SDK query options
+
+### Concurrent Session Support
+- Fixed blocking that prevented switching sessions while one was running
+- Removed global `runningQuerySessionId` tracking
+- Now only blocks concurrent queries on the same session
+- Enables working on multiple sessions simultaneously in different tabs
+
+## 2025-02-04 - QoL Improvements & Bug Fixes
+
+### Chat Input Persistence
+- Chat input now persists when switching between Chat/Terminal tabs
+- Input preserved when switching between sessions
+- Per-session localStorage storage (`chat-input:{project}:{session}`)
+- Input automatically restored when returning to a session
+- Cleared on successful message submission
+
+### Session Status Indicators in Sidebar
+- Real-time task status indicators next to sessions in sidebar
+- Status visible across all browser tabs/windows
+- Three states with visual indicators:
+  - **Running**: Animated blue spinner while task executes
+  - **Completed**: Green checkmark (cleared when session opened)
+  - **Error**: Red X icon (cleared when session opened)
+- Global WebSocket broadcasting for cross-tab synchronization
+- `task_status` messages now include `sessionId` for tracking
+- `session_opened` broadcast event clears indicators
+- Indicators persist until user opens the session
+
+### Bug Fixes
+- Fixed terminal processes not loading when switching sessions (same project)
+- Fixed terminal processes showing stale data when switching sessions
+- Terminal processes now refresh automatically when switching to terminal tab
+- Terminal state properly cleared on session change to prevent cross-session contamination
+
+## 2025-02-03 - v1.0.0 Release
+
+### npm Package
+- Published as `claude-web` on npm (`npx claude-web`)
+- CLI with `--port`, `--host`, `--no-auth` options
+- Auth data moved to `~/.claude-web/.auth.json` for npx compatibility
+
+### Model Selector
+- Added model selector buttons in toolbar (H/S/O/P)
+  - H: Haiku - Fast & lightweight
+  - S: Sonnet - Balanced (default)
+  - O: Opus - Most capable
+  - P: Opus Plan - Extended thinking for complex tasks
+- Model selection persisted in localStorage
+- Model passed to Claude Agent SDK query options
+
+### Inline Markdown Editor
+- Integrated TinyMDE (tiny-markdown-editor) for Slack-style inline formatting
+- Real-time markdown preview with syntax characters visible
+- Supports bold, italic, code, headings, lists, links, etc.
+- Contenteditable-based editor under 70KB (lightweight)
+- Custom dark theme matching app styling
+- Preserves Ctrl+Enter / Cmd+Enter submit behavior
+
+### UI Improvements
+- Chat messages auto-scroll to bottom on session load/switch
+- Jump-to-bottom button appears when scrolling up (with slide-up animation)
+- Improved scroll detection with 150px threshold for better UX
+- User messages render as markdown with permission indicators
+- Permission mode displayed with colored right border and icon in footer
+
+## 2025-02-03 - Terminal & Multi-Tab Sync
+
+### UI Redesign
+- Mode tabs (Chat/Terminal) above textarea - VSCode-style toggle with running process badge
+- Toolbar moved below input for cleaner layout
+- Permission tabs hidden in terminal mode
+- Chat bubble icon in chat input (color matches permission mode)
+
+### Terminal Feature
+- Added terminal mode to ChatView for running shell commands
+- Active/History sub-tabs in terminal output
+  - Active: Running processes only
+  - History: Chronological order (newest at bottom, scroll anchored)
+- Uses user's default shell (`$SHELL -i`) to load rc files
+- Natural input: Enter submits, `\` at end for multiline
+- Command history with up/down arrows (per-project localStorage)
+- `Ctrl+L` clears input (matches real terminal behavior)
+- Copy output button on process blocks
+- Multiline textarea with resizable height
+- Process management with spawn/kill functionality
+- Output streaming with stdout/stderr differentiation
+- Process state persistence to `/tmp/claude-web-processes.json`
+- Graceful handling of server restarts (marks processes as killed)
+
+### Quick Session Switcher
+- `Ctrl+K` opens command palette from anywhere
+- Search/filter sessions by title or project name
+- Keyboard navigation (up/down, Enter, Escape)
+- Shows recent sessions with timestamps
+
+### Session Active Elsewhere Warning
+- Warning banner when same session is open in multiple tabs
+- Bidirectional notifications (both tabs notified when second opens, remaining tab notified when other closes)
+- Session watcher tracking in `ws.js` with `watchSession`, `unwatchSession`, `unwatchAllSessions`
+- Prevents JSONL corruption from concurrent writes
+
+## 2025-02-02 - UI Enhancements: Sidebar, Breadcrumbs, File Indicator
+
+- Added sidebar with tabs (Recent Sessions, Recent Projects) - isolated to ChatView only
+- Hamburger toggle in chat header with responsive behavior (overlay on mobile)
+- Breadcrumb navigation: [Project Name] / [Session Title] with clickable project link
+- File activity indicator in toolbar (shows current file operation during task)
+- Permission mode sync (auto-updates when Claude uses EnterPlanMode/ExitPlanMode)
+- Permission mode UI changed from dropdown to 4 icon buttons with color-coded backgrounds
+- Quick "New" session button on project items (sidebar and projects view)
+- Fixed stale session timestamps: Use JSONL file mtime instead of sessions-index.json
+- Refresh sessions list when task completes for up-to-date timestamps
+
+## 2025-02-02 - QoL Medium Impact Features
+
+- Implemented AppHeader component with connection status pill (green/orange/red)
+- Added connectionState tracking to WebSocket composable
+- Added message timestamps with relative time on hover
+- Added resizable textarea with drag handle
+- Implemented session titles/rename system with `.session-titles.json` metadata files
+- Added editable session titles to SessionsView and ChatView
+- Implemented stop/cancel button for running requests with AbortController
+
+## 2025-02-01 - Continued UI Improvements
+
+- Fixed SDK permission modes (`bypassPermissions` + `allowDangerouslySkipPermissions`)
+- Added failsafe for git status in non-git directories
+- Added "No git" indicator in toolbar
+- Removed duplicate permission checkboxes (now only in chat toolbar dropdown)
+- URL updates from `/session/new` to actual session ID after first message
+- Loading state for existing sessions ("Loading..." vs "Start a conversation")
+- Final result message now collapsed by default (shows metadata in header)
+- Monospace font for chat input
+- Permission mode reflected in input border color (green/yellow/orange)
+- Reduced border radius globally
+- Full width layout for all pages
+
+## 2025-02-01 - Major UI Overhaul
+
+- Migrated to Vue 3 + Vite + Vue Router
+- Created 3-tab landing page (Recent Sessions, Recent Projects, Select Folder)
+- Implemented folder browser with manual path input
+- Added git branch and file change status to chat toolbar
+- Added permission mode dropdown (default, plan, bypass, skip)
+- Permission mode persisted per session in localStorage
+- Refactored backend into modular event handlers (server/events/)
+- Fixed multi-tab support (per-connection context)
+- Fixed marked v17 renderer API (token objects)
+- Fixed markdown link rendering (was showing [object Object])
+- Expanded tool calls by default with nice formatting
+- Added multiline chat input (Enter for newline, Ctrl+Enter to send)
+- Full width layout for chat messages
+
+## 2025-01-31 - Background Tasks & Production Planning
+
+- Implemented background task execution
+- Added per-session task tracking for parallel sessions
+- Task status bar shows running/completed/error state
+
+## 2025-01-25 - Session Persistence & Interop POC
+
+- Confirmed CLI ↔ Web interoperability
+- Sessions stored locally in ~/.claude/projects/
+- JSONL parsing for message history
+
+## 2025-01-24 - Initial POC
+
+- Express + WebSocket server
+- Claude Agent SDK integration
+- Basic streaming messages

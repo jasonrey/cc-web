@@ -1,0 +1,96 @@
+/**
+ * Event: select_session
+ *
+ * Selects a session and loads its history from JSONL.
+ * Returns session info, task status, and message history.
+ *
+ * @event select_session
+ * @param {Object} message - { sessionId: string }
+ * @returns {void} Sends: session_selected, task_status, session_history
+ *
+ * @example
+ * // Request
+ * { type: 'select_session', sessionId: 'abc123-def456' }
+ *
+ * // Response (multiple messages)
+ * { type: 'session_selected', sessionId: 'abc123-def456', projectPath: '-home-...' }
+ * { type: 'task_status', taskId: null, status: 'idle', resultsCount: 15 }
+ * { type: 'session_history', messages: [...] }
+ */
+
+import { loadSessionHistory } from '../lib/sessions.js';
+import { getOrCreateTask } from '../lib/tasks.js';
+import {
+  broadcast,
+  getSessionWatcherCount,
+  send,
+  unwatchSession,
+  watchSession,
+} from '../lib/ws.js';
+
+export async function handler(ws, message, context) {
+  const sessionId = message.sessionId;
+
+  if (!sessionId || typeof sessionId !== 'string') {
+    send(ws, { type: 'error', message: 'Session ID is required' });
+    return;
+  }
+
+  // Check if session is already active in another tab
+  const otherWatchers = getSessionWatcherCount(sessionId, ws);
+  const isActiveElsewhere = otherWatchers > 0;
+
+  // Unwatch previous session, watch new one
+  if (context.currentSessionId && context.currentSessionId !== sessionId) {
+    unwatchSession(context.currentSessionId, ws);
+  }
+  context.currentSessionId = sessionId;
+  watchSession(sessionId, ws);
+
+  const task = sessionId ? getOrCreateTask(sessionId) : null;
+
+  // Always load history from JSONL for accurate state
+  // (in-memory task.results may be incomplete or stale)
+  let history = [];
+  let hasOlderMessages = false;
+  let summaryCount = 0;
+
+  if (context.currentProjectPath && sessionId) {
+    const fullHistory = message.fullHistory || false;
+    const result = await loadSessionHistory(
+      context.currentProjectPath,
+      sessionId,
+      { fullHistory },
+    );
+    history = result.messages;
+    hasOlderMessages = result.hasOlderMessages;
+    summaryCount = result.summaryCount;
+  }
+
+  send(ws, {
+    type: 'session_selected',
+    sessionId: sessionId,
+    projectPath: context.currentProjectPath,
+    isActiveElsewhere,
+  });
+
+  send(ws, {
+    type: 'task_status',
+    taskId: task?.id || null,
+    status: task?.status || 'idle',
+    resultsCount: history.length,
+  });
+
+  send(ws, {
+    type: 'session_history',
+    messages: history,
+    hasOlderMessages,
+    summaryCount,
+  });
+
+  // Broadcast to all clients to clear sidebar indicator for this session
+  broadcast({
+    type: 'session_opened',
+    sessionId: sessionId,
+  });
+}

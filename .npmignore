@@ -1,0 +1,41 @@
+# Source files (frontend is built to dist/)
+src/
+public/
+
+# Development config
+nodemon.json
+nodemon-manual.json
+vite.config.js
+biome.json
+.env
+.env.*
+dev.log
+
+# Documentation (keep README.md)
+PLAN.md
+CHANGELOG.md
+CLAUDE.md
+.claude/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test/temp files
+*.log
+tmp/
+temp/
+coverage/
+
+# Build artifacts not needed
+node_modules/

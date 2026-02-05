@@ -1,0 +1,531 @@
+<script setup>
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { ansiToHtml } from '../utils/ansi';
+
+const props = defineProps({
+  processes: {
+    type: Array,
+    default: () => [],
+  },
+  expandedHistory: {
+    type: Set,
+    default: () => new Set(),
+  },
+  activeTab: {
+    type: String,
+    default: 'history', // 'active' | 'history'
+  },
+});
+
+const emit = defineEmits([
+  'kill',
+  'clear',
+  'toggle-expand',
+  'update:activeTab',
+]);
+
+const historyContentRef = ref(null);
+
+// Running processes only (for Active tab)
+const runningProcesses = computed(() =>
+  props.processes.filter((p) => p.status === 'running'),
+);
+
+// All processes sorted by startedAt ascending (oldest first, newest at bottom)
+const allProcesses = computed(() =>
+  [...props.processes].sort((a, b) => a.startedAt - b.startedAt),
+);
+
+// Scroll history to bottom
+function scrollHistoryToBottom() {
+  if (historyContentRef.value) {
+    historyContentRef.value.scrollTop = historyContentRef.value.scrollHeight;
+  }
+}
+
+// Scroll to bottom on mount and when processes change
+onMounted(() => {
+  nextTick(scrollHistoryToBottom);
+});
+
+watch(
+  () => props.processes.length,
+  () => {
+    nextTick(scrollHistoryToBottom);
+  },
+);
+
+// Scroll to bottom when switching to history tab
+watch(
+  () => props.activeTab,
+  (tab) => {
+    if (tab === 'history') {
+      nextTick(scrollHistoryToBottom);
+    }
+  },
+);
+
+function formatCwd(cwd) {
+  if (!cwd) return '';
+  // Show last 2 path segments
+  const parts = cwd.split('/');
+  return parts.slice(-2).join('/');
+}
+
+function formatDuration(startedAt, endedAt) {
+  const duration = (endedAt || Date.now()) - startedAt;
+  if (duration < 1000) return `${duration}ms`;
+  if (duration < 60000) return `${(duration / 1000).toFixed(1)}s`;
+  return `${Math.floor(duration / 60000)}m ${Math.floor((duration % 60000) / 1000)}s`;
+}
+
+function getStatusIcon(status) {
+  switch (status) {
+    case 'running':
+      return null; // Use spinner instead
+    case 'completed':
+      return '✓';
+    case 'error':
+      return '✗';
+    case 'killed':
+      return '■';
+    default:
+      return '?';
+  }
+}
+
+function isExpanded(processId) {
+  return props.expandedHistory.has(processId);
+}
+
+function toggleExpand(processId) {
+  emit('toggle-expand', processId);
+}
+
+function setTab(tab) {
+  emit('update:activeTab', tab);
+}
+
+// Copy output functionality
+const copiedProcessId = ref(null);
+
+function getOutputText(proc) {
+  return proc.output.map((chunk) => chunk.text).join('');
+}
+
+// Convert output to HTML with ANSI colors
+function getOutputHtml(proc) {
+  return proc.output
+    .map((chunk) => {
+      const html = ansiToHtml(chunk.text);
+      // Wrap in stream class for stderr coloring (only if no ANSI colors present)
+      if (chunk.stream === 'stderr' && !chunk.text.includes('\x1b[')) {
+        return `<span class="stream-stderr">${html}</span>`;
+      }
+      return html;
+    })
+    .join('');
+}
+
+async function copyOutput(proc, e) {
+  e.stopPropagation(); // Don't trigger expand/collapse
+  try {
+    await navigator.clipboard.writeText(getOutputText(proc));
+    copiedProcessId.value = proc.id;
+    setTimeout(() => {
+      copiedProcessId.value = null;
+    }, 2000);
+  } catch (err) {
+    console.error('Failed to copy:', err);
+  }
+}
+</script>
+
+<template>
+  <div class="terminal-output">
+    <!-- Sub-tabs -->
+    <div class="terminal-tabs">
+      <button
+        class="terminal-tab"
+        :class="{ active: activeTab === 'active' }"
+        @click="setTab('active')"
+      >
+        Active
+        <span class="tab-badge" v-if="runningProcesses.length > 0">{{ runningProcesses.length }}</span>
+      </button>
+      <button
+        class="terminal-tab"
+        :class="{ active: activeTab === 'history' }"
+        @click="setTab('history')"
+      >
+        History
+      </button>
+      <button
+        v-if="activeTab === 'history'"
+        class="clear-all-btn"
+        @click="$emit('clear')"
+        title="Clear completed"
+      >
+        Clear
+      </button>
+    </div>
+
+    <!-- Active Tab Content -->
+    <div class="tab-content" v-if="activeTab === 'active'">
+      <div v-if="runningProcesses.length > 0" class="process-list">
+        <div
+          v-for="proc in runningProcesses"
+          :key="proc.id"
+          class="terminal-block running"
+        >
+          <div class="terminal-header">
+            <span class="terminal-status running">
+              <span class="spinner"></span>
+            </span>
+            <span class="terminal-command">$ {{ proc.command }}</span>
+            <span class="terminal-meta">
+              <span class="terminal-cwd">{{ formatCwd(proc.cwd) }}</span>
+              <span class="terminal-pid">PID {{ proc.pid }}</span>
+            </span>
+            <button
+              v-if="proc.output.length > 0"
+              class="copy-btn"
+              :class="{ copied: copiedProcessId === proc.id }"
+              @click="copyOutput(proc, $event)"
+              :title="copiedProcessId === proc.id ? 'Copied!' : 'Copy output'"
+            >
+              {{ copiedProcessId === proc.id ? '✓' : 'Copy' }}
+            </button>
+            <button class="kill-btn" @click="$emit('kill', proc.id)" title="Kill process">
+              Kill
+            </button>
+          </div>
+          <pre class="terminal-pre" v-html="getOutputHtml(proc)"></pre>
+        </div>
+      </div>
+      <div class="terminal-empty" v-else>
+        <p>No active processes</p>
+        <p class="hint">Running commands will appear here</p>
+      </div>
+    </div>
+
+    <!-- History Tab Content -->
+    <div class="tab-content" v-if="activeTab === 'history'" ref="historyContentRef">
+      <div v-if="allProcesses.length > 0" class="process-list">
+        <div
+          v-for="proc in allProcesses"
+          :key="proc.id"
+          class="terminal-block"
+          :class="{ running: proc.status === 'running', expanded: isExpanded(proc.id) }"
+        >
+          <div class="terminal-header" @click="proc.status !== 'running' && toggleExpand(proc.id)">
+            <span class="terminal-status" :class="proc.status">
+              <span v-if="proc.status === 'running'" class="spinner"></span>
+              <template v-else>{{ getStatusIcon(proc.status) }}</template>
+            </span>
+            <span class="terminal-command">$ {{ proc.command }}</span>
+            <span class="terminal-meta">
+              <template v-if="proc.status === 'running'">
+                <span class="terminal-cwd">{{ formatCwd(proc.cwd) }}</span>
+                <span class="terminal-pid">PID {{ proc.pid }}</span>
+              </template>
+              <template v-else>
+                <span class="terminal-exit" :class="proc.status">
+                  exit {{ proc.exitCode ?? proc.signal }}
+                </span>
+                <span class="terminal-duration">{{ formatDuration(proc.startedAt, proc.endedAt) }}</span>
+              </template>
+            </span>
+            <button
+              v-if="proc.output.length > 0 && (proc.status === 'running' || isExpanded(proc.id))"
+              class="copy-btn"
+              :class="{ copied: copiedProcessId === proc.id }"
+              @click="copyOutput(proc, $event)"
+              :title="copiedProcessId === proc.id ? 'Copied!' : 'Copy output'"
+            >
+              {{ copiedProcessId === proc.id ? '✓' : 'Copy' }}
+            </button>
+            <button
+              v-if="proc.status === 'running'"
+              class="kill-btn"
+              @click.stop="$emit('kill', proc.id)"
+              title="Kill process"
+            >
+              Kill
+            </button>
+            <span v-else class="expand-icon">{{ isExpanded(proc.id) ? '▼' : '▶' }}</span>
+          </div>
+          <pre v-if="proc.status === 'running' || isExpanded(proc.id)" class="terminal-pre" v-html="getOutputHtml(proc)"></pre>
+        </div>
+      </div>
+      <div class="terminal-empty" v-else>
+        <p>No commands yet</p>
+        <p class="hint">Type a command below to execute</p>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.terminal-output {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.terminal-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.terminal-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  transition: color 0.15s, background 0.15s;
+}
+
+.terminal-tab:hover {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+.terminal-tab.active {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+.tab-badge {
+  font-size: 10px;
+  padding: 1px 5px;
+  background: var(--warning-color);
+  color: var(--bg-primary);
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.clear-all-btn {
+  margin-left: auto;
+  font-size: 11px;
+  padding: 4px 10px;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  transition: color 0.15s, background 0.15s;
+}
+
+.clear-all-btn:hover {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+.tab-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.process-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+}
+
+.terminal-block {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.terminal-block.running {
+  border-color: var(--warning-color);
+  border-left-width: 3px;
+}
+
+.terminal-block:not(.running) {
+  cursor: pointer;
+}
+
+.terminal-block:not(.running):hover {
+  background: var(--bg-hover);
+}
+
+.terminal-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-tertiary);
+}
+
+.terminal-status {
+  flex-shrink: 0;
+  font-weight: 600;
+}
+
+.terminal-status.running {
+  color: var(--warning-color);
+}
+
+.terminal-status.completed {
+  color: var(--success-color);
+}
+
+.terminal-status.error {
+  color: var(--error-color);
+}
+
+.terminal-status.killed {
+  color: var(--text-muted);
+}
+
+.spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--warning-color);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.terminal-command {
+  flex: 1;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.terminal-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.terminal-cwd,
+.terminal-pid,
+.terminal-duration {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.terminal-exit {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.terminal-exit.completed {
+  background: rgba(34, 197, 94, 0.1);
+  color: var(--success-color);
+}
+
+.terminal-exit.error {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--error-color);
+}
+
+.terminal-exit.killed {
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+}
+
+.expand-icon {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.kill-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--error-color);
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+}
+
+.kill-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.copy-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  transition: background 0.15s, color 0.15s;
+}
+
+.copy-btn:hover {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+.copy-btn.copied {
+  color: var(--success-color);
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.terminal-pre {
+  margin: 0;
+  padding: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.terminal-block.running .terminal-pre {
+  max-height: 400px;
+}
+
+.stream-stdout {
+  color: var(--text-primary);
+}
+
+.stream-stderr {
+  color: var(--error-color);
+}
+
+.terminal-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 48px;
+  color: var(--text-secondary);
+}
+
+.terminal-empty .hint {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+</style>

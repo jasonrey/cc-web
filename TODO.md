@@ -1,0 +1,5 @@
+- chat input queue
+- keyboard shortcuts
+- file/folder
+- file editor
+- task management, notion db, github issues

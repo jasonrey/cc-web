@@ -1,0 +1,270 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { send } from '../lib/ws.js';
+
+/**
+ * Browse folder contents
+ */
+export async function handleFilesBrowse(ws, payload) {
+  const { path: folderPath } = payload;
+
+  try {
+    // Validate path (prevent directory traversal)
+    const resolvedPath = path.resolve(folderPath);
+
+    // Read directory
+    const entries = await fs.readdir(resolvedPath, { withFileTypes: true });
+
+    const items = entries.map((entry) => ({
+      name: entry.name,
+      path: path.join(resolvedPath, entry.name),
+      isDirectory: entry.isDirectory(),
+    }));
+
+    send(ws, {
+      type: 'files:browse:result',
+      path: resolvedPath,
+      items,
+    });
+  } catch (err) {
+    send(ws, {
+      type: 'files:browse:error',
+      path: folderPath,
+      error: err.message,
+    });
+  }
+}
+
+/**
+ * Read file contents
+ */
+export async function handleFilesRead(ws, payload) {
+  const { path: filePath } = payload;
+
+  try {
+    // Validate path
+    const resolvedPath = path.resolve(filePath);
+
+    // Check file size (limit to 10MB)
+    const stats = await fs.stat(resolvedPath);
+    if (stats.size > 10 * 1024 * 1024) {
+      throw new Error('File too large (max 10MB)');
+    }
+
+    // Check if binary (skip for empty files)
+    if (stats.size > 0) {
+      const sampleSize = Math.min(8192, stats.size);
+      const buffer = Buffer.alloc(sampleSize);
+      const fd = await fs.open(resolvedPath, 'r');
+      await fd.read(buffer, 0, sampleSize, 0);
+      await fd.close();
+
+      if (buffer.includes(0)) {
+        throw new Error('Cannot edit binary file');
+      }
+    }
+
+    // Read full content
+    const content = await fs.readFile(resolvedPath, 'utf-8');
+
+    send(ws, {
+      type: 'files:read:result',
+      path: resolvedPath,
+      content,
+      size: stats.size,
+    });
+  } catch (err) {
+    send(ws, {
+      type: 'files:read:error',
+      path: filePath,
+      error: err.message,
+    });
+  }
+}
+
+/**
+ * Write file contents
+ */
+export async function handleFilesWrite(ws, payload) {
+  const { path: filePath, content } = payload;
+
+  try {
+    // Validate path
+    const resolvedPath = path.resolve(filePath);
+
+    // Ensure parent directory exists
+    const dir = path.dirname(resolvedPath);
+    await fs.mkdir(dir, { recursive: true });
+
+    // Write file
+    await fs.writeFile(resolvedPath, content, 'utf-8');
+
+    send(ws, {
+      type: 'files:write:result',
+      path: resolvedPath,
+      success: true,
+    });
+  } catch (err) {
+    send(ws, {
+      type: 'files:write:error',
+      path: filePath,
+      error: err.message,
+    });
+  }
+}
+
+/**
+ * Create new file
+ */
+export async function handleFilesCreate(ws, payload) {
+  const { path: filePath, isDirectory = false } = payload;
+
+  try {
+    const resolvedPath = path.resolve(filePath);
+
+    if (isDirectory) {
+      await fs.mkdir(resolvedPath, { recursive: true });
+    } else {
+      // Ensure parent directory exists
+      const dir = path.dirname(resolvedPath);
+      await fs.mkdir(dir, { recursive: true });
+      // Create empty file
+      await fs.writeFile(resolvedPath, '', 'utf-8');
+    }
+
+    send(ws, {
+      type: 'files:create:result',
+      path: resolvedPath,
+      isDirectory,
+      success: true,
+    });
+
+    // Refresh parent directory
+    const parentPath = path.dirname(resolvedPath);
+    handleFilesBrowse(ws, { path: parentPath });
+  } catch (err) {
+    send(ws, {
+      type: 'files:create:error',
+      path: filePath,
+      error: err.message,
+    });
+  }
+}
+
+/**
+ * Rename file or folder
+ */
+export async function handleFilesRename(ws, payload) {
+  const { oldPath, newPath } = payload;
+
+  try {
+    const resolvedOldPath = path.resolve(oldPath);
+    const resolvedNewPath = path.resolve(newPath);
+
+    // Check if old path exists
+    await fs.access(resolvedOldPath);
+
+    // Rename
+    await fs.rename(resolvedOldPath, resolvedNewPath);
+
+    send(ws, {
+      type: 'files:rename:result',
+      oldPath: resolvedOldPath,
+      newPath: resolvedNewPath,
+      success: true,
+    });
+
+    // Refresh parent directory
+    const parentPath = path.dirname(resolvedNewPath);
+    handleFilesBrowse(ws, { path: parentPath });
+  } catch (err) {
+    send(ws, {
+      type: 'files:rename:error',
+      oldPath,
+      newPath,
+      error: err.message,
+    });
+  }
+}
+
+/**
+ * Delete file or folder
+ */
+export async function handleFilesDelete(ws, payload) {
+  const { path: targetPath } = payload;
+
+  try {
+    const resolvedPath = path.resolve(targetPath);
+
+    // Check if exists
+    const stats = await fs.stat(resolvedPath);
+
+    if (stats.isDirectory()) {
+      // Remove directory recursively
+      await fs.rm(resolvedPath, { recursive: true, force: true });
+    } else {
+      // Remove file
+      await fs.unlink(resolvedPath);
+    }
+
+    send(ws, {
+      type: 'files:delete:result',
+      path: resolvedPath,
+      success: true,
+    });
+
+    // Refresh parent directory
+    const parentPath = path.dirname(resolvedPath);
+    handleFilesBrowse(ws, { path: parentPath });
+  } catch (err) {
+    send(ws, {
+      type: 'files:delete:error',
+      path: targetPath,
+      error: err.message,
+    });
+  }
+}
+
+/**
+ * Move file or folder
+ */
+export async function handleFilesMove(ws, payload) {
+  const { sourcePath, destPath } = payload;
+
+  try {
+    const resolvedSourcePath = path.resolve(sourcePath);
+    const resolvedDestPath = path.resolve(destPath);
+
+    // Check if source exists
+    await fs.access(resolvedSourcePath);
+
+    // Ensure destination parent exists
+    const destDir = path.dirname(resolvedDestPath);
+    await fs.mkdir(destDir, { recursive: true });
+
+    // Move (rename)
+    await fs.rename(resolvedSourcePath, resolvedDestPath);
+
+    send(ws, {
+      type: 'files:move:result',
+      sourcePath: resolvedSourcePath,
+      destPath: resolvedDestPath,
+      success: true,
+    });
+
+    // Refresh both directories
+    const sourceParent = path.dirname(resolvedSourcePath);
+    const destParent = path.dirname(resolvedDestPath);
+    handleFilesBrowse(ws, { path: sourceParent });
+    if (sourceParent !== destParent) {
+      handleFilesBrowse(ws, { path: destParent });
+    }
+  } catch (err) {
+    send(ws, {
+      type: 'files:move:error',
+      sourcePath,
+      destPath,
+      error: err.message,
+    });
+  }
+}
