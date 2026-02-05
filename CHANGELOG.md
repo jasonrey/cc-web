@@ -1,6 +1,44 @@
 # Changelog
 
-All notable changes to Claude Web.
+All notable changes to cc-web (Claude Code Web).
+
+## 2026-02-05 - UI Improvements & Bug Fixes
+
+### Files Tab Reorganization
+- **Explorer header moved below mode tabs**: Now appears in footer area for better layout
+- **Inline breadcrumb navigation**: Clickable path segments for quick folder navigation
+- **Quick navigation buttons**: "Go up directory" and "Go to project root" buttons
+- **Inline path editing**: Click breadcrumb path to edit directly (replaces modal)
+- **Mobile-friendly breadcrumbs**: Horizontally scrollable for long paths
+- **Dotfiles toggle relocated**: Moved alongside create file/folder buttons in header
+
+### File Editor Redesign
+- **Cleaner header layout**: filename + spacer + save icon + close icon
+- **Icon-only buttons**: Removed text labels for more compact design
+- **Improved button contrast**: Better legibility with updated colors
+- **Confirmation on close**: Warns if unsaved changes exist
+
+### Model Selector Fix
+- **Removed invalid 'opusplan' model**: Only valid SDK models (haiku, sonnet, opus)
+- **Added debug logging**: Tracks model sent by client and returned by API
+- **Model extraction fix**: Properly identifies model from API response
+
+### Navigation Enhancements
+- **Proper anchor tags**: Converted session/project links to router-links
+- **Middle-click/right-click support**: Open in new tab functionality
+- **Dynamic page title**: Format: "cc-web - project-name / session-title"
+- **Fixed sidebar status indicator**: Now floats on right instead of new row
+
+### Terminal Enhancement
+- **Replay button**: Re-run commands from history with single click
+
+### Bug Fixes
+- **Cross-session typing indicator**: Fixed task_status filtering by sessionId
+- **Session-specific files tab**: Files tab now updates when switching sessions
+- **Cross-session message streaming**: Fixed race conditions in session clearing/setting
+
+### Branding Update
+- **Renamed to cc-web**: Changed from "claude-web" to "cc-web" throughout UI
 
 ## 2025-02-05 - Files Tab & UI Refinements
 

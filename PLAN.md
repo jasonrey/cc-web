@@ -260,6 +260,7 @@ npm run start
 - Context compaction handling (load only recent messages, option to load full history)
 - Visual separator for compaction points
 - URL update after new session creation
+- Cross-session bug fixes (typing indicator, message streaming, files tab state)
 
 ### Authentication
 - Password-based auth with argon2 hashing
@@ -270,15 +271,16 @@ npm run start
 - `AUTH_DISABLED=true` env var to bypass auth
 
 ### Chat Interface
-- Mode tabs (Chat/Terminal) above textarea - VSCode-style toggle
+- Mode tabs (Chat/Terminal/Files) above textarea - VSCode-style toggle
 - Chat bubble icon in input with permission-based colors
-- Model selector (H/S/O/P buttons for Haiku/Sonnet/Opus/Opus-Plan)
+- Model selector (H/S/O buttons for Haiku/Sonnet/Opus) - fixed to use only valid SDK models
 - Model selection persisted in localStorage
+- Model badges on assistant responses showing which model handled each response
 - Permission mode selector (4 icon buttons in toolbar)
 - Permission mode persisted per session in localStorage
 - Permission mode sync when Claude uses EnterPlanMode/ExitPlanMode
 - Toolbar below input with git branch, file activity, model, permissions
-- Git branch and file changes display
+- Git branch and file changes display with compact symbols (+2-1)
 - "No git" indicator for non-git folders
 - Stop/cancel button for running requests (AbortController)
 - Keyboard shortcuts: `Ctrl+K` session switcher, `Escape` blur, `Ctrl+L` scroll bottom
@@ -287,6 +289,7 @@ npm run start
 - Resizable textarea (drag handle, 60px-400px)
 - Inline markdown editor (TinyMDE) with real-time formatting preview
 - User messages rendered as markdown with permission indicators (colored right border, icon in footer)
+- Dynamic page title: "cc-web - project-name / session-title"
 
 ### Quick Session Switcher
 - `Ctrl+K` opens command palette from anywhere
@@ -306,6 +309,9 @@ npm run start
   - Red X for errors (cleared when opened)
   - Cross-tab synchronization via global WebSocket broadcasts
   - Status persists until session is opened
+  - Fixed layout (floats on right, no longer takes own row)
+- Proper anchor tags with router-links throughout (sidebar, session list, project list)
+- Middle-click and right-click support for opening in new tab
 
 ### Message Display
 - Full markdown rendering with syntax highlighting
@@ -328,6 +334,7 @@ npm run start
   - History: All processes sorted chronologically (oldest first, newest at bottom)
 - Natural terminal input: Enter submits (unless line ends with `\` for multiline)
 - Command history with up/down arrows (per-project, stored in localStorage)
+- Replay button to re-run commands from history
 - `Ctrl+L` clears input (matches real terminal behavior)
 - Copy output button on process blocks
 - Multiline textarea with resizable height (matches chat input)
@@ -340,23 +347,54 @@ npm run start
 - Monospace font for code, paths, input
 - Permission mode border colors (green/yellow/orange)
 
+### Files Mode
+- Third mode tab for browsing and editing project files
+- File explorer with folder navigation and breadcrumb path
+- Explorer header below mode tabs (in footer area)
+- Inline breadcrumb navigation with clickable path segments
+- Quick navigation buttons: "go up directory" and "go to project root"
+- Inline path editing (click breadcrumb to edit directly)
+- Horizontally scrollable breadcrumbs for long paths (mobile-friendly)
+- Dotfiles toggle alongside create file/folder buttons
+- File operations: create file/folder, rename, delete (with confirmation modals)
+- File editor with auto-detection:
+  - Markdown files (`.md`): TinyMDE rich editor
+  - Code files: Monospace textarea
+  - Text files: Regular textarea
+- Redesigned editor header: filename + spacer + save icon + close icon
+- Dirty state tracking with unsaved changes indicator (*)
+- Unsaved changes warning on close
+- Keyboard shortcuts: Cmd+S to save, Escape to close
+- Session-specific file browsing (updates when switching sessions)
+- WebSocket events: `files:browse`, `files:read`, `files:write`, `files:create`, `files:rename`, `files:delete`
+- Security: 10MB file size limit, binary detection, path validation
+
 ### npm Package
-- Published as `claude-web` on npm
+- Published as `cc-web` on npm (renamed from `claude-web`)
 - CLI entry point with `--port`, `--host`, `--no-auth` options
 - Auth data stored in `~/.claude-web/.auth.json` (works with npx)
 - Frontend pre-built in `dist/` folder
+
+### MCP Integration
+- Auto-detection and loading of MCP servers from CLI config
+- Three-level scope merging: user (`~/.claude.json`) → project → local (`.mcp.json`)
+- OAuth token injection with expiry checking
+- Enhanced tool display for MCP tools (dbhub, notion, playwright)
+- Modular MCP tool structure for maintainability
 
 ## TODO / Future Improvements
 
 ### High Priority
 - [x] Better text editor for chat input - TinyMDE (inline markdown preview)
+- [x] Files mode - browse and edit project files
 - [ ] File diff viewer (for changed files in git repo)
 
 ### Medium Priority
-- [ ] Session deletion
+- [x] Session deletion
 - [ ] Export session as markdown
 - [ ] File tree view in chat sidebar
 - [ ] Message actions (copy, retry, edit & resend)
+- [ ] Syntax highlighting for code files in file editor (highlight.js or Prism)
 
 ### Low Priority
 - [ ] Mobile responsive design improvements
