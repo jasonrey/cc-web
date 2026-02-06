@@ -63,17 +63,21 @@ function parseDiff(diffText) {
 
   for (const line of lines) {
     let type = 'unchanged';
+    let content = line;
+
     if (line.startsWith('+++') || line.startsWith('---')) {
       type = 'header';
     } else if (line.startsWith('@@')) {
       type = 'hunk';
     } else if (line.startsWith('+')) {
       type = 'added';
+      content = line.substring(1); // Remove the leading +
     } else if (line.startsWith('-')) {
       type = 'removed';
+      content = line.substring(1); // Remove the leading -
     }
 
-    parsedLines.push({ content: line, type });
+    parsedLines.push({ content, type });
   }
 
   return parsedLines;

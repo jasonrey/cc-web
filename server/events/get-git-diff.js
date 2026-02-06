@@ -26,6 +26,8 @@
  */
 
 import { exec } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { send } from '../lib/ws.js';
 
@@ -44,19 +46,25 @@ export async function handler(ws, message) {
     // Parse changed files
     const files = [];
     for (const line of statusOutput.split('\n').filter(Boolean)) {
-      // Format: XY file
+      // Format: XY file (or XY old -> new for renames)
       // X = index status, Y = working tree status
       const status = line.substring(0, 2).trim();
-      const path = line.substring(3);
+      let path = line.substring(3);
 
       let statusChar = 'M'; // Modified
       if (status.includes('A'))
         statusChar = 'A'; // Added
       else if (status.includes('D'))
         statusChar = 'D'; // Deleted
-      else if (status.includes('R'))
+      else if (status.includes('R')) {
         statusChar = 'R'; // Renamed
-      else if (status.includes('?')) statusChar = '?'; // Untracked
+        // Renamed files have format: "old-path -> new-path"
+        // Extract just the new path for the diff
+        const arrowIndex = path.indexOf(' -> ');
+        if (arrowIndex !== -1) {
+          path = path.substring(arrowIndex + 4);
+        }
+      } else if (status.includes('?')) statusChar = '?'; // Untracked
 
       files.push({ path, status: statusChar, additions: 0, deletions: 0 });
     }
@@ -65,31 +73,57 @@ export async function handler(ws, message) {
     const diffs = {};
     for (const file of files) {
       try {
-        // Use git diff HEAD to show all changes (staged + unstaged)
-        const { stdout: diffOutput } = await execAsync(
-          `git diff HEAD -- "${file.path}"`,
-          {
-            cwd: projectPath,
-            maxBuffer: 10 * 1024 * 1024,
-          },
-        );
-
-        if (diffOutput) {
-          diffs[file.path] = diffOutput;
-
-          // Count additions/deletions
-          const lines = diffOutput.split('\n');
-          let additions = 0;
-          let deletions = 0;
-          for (const line of lines) {
-            if (line.startsWith('+') && !line.startsWith('+++')) additions++;
-            if (line.startsWith('-') && !line.startsWith('---')) deletions++;
+        if (file.status === '?') {
+          // Untracked file - show entire content as new
+          try {
+            const content = await readFile(
+              join(projectPath, file.path),
+              'utf-8',
+            );
+            const lines = content.split('\n');
+            // Format as unified diff for untracked file
+            const diffLines = [
+              `diff --git a/${file.path} b/${file.path}`,
+              'new file mode 100644',
+              '--- /dev/null',
+              `+++ b/${file.path}`,
+              `@@ -0,0 +1,${lines.length} @@`,
+              ...lines.map((line) => `+${line}`),
+            ];
+            diffs[file.path] = diffLines.join('\n');
+            file.additions = lines.length;
+            file.deletions = 0;
+          } catch {
+            // Binary or unreadable file
+            diffs[file.path] = `Binary file or unable to read: ${file.path}`;
           }
-          file.additions = additions;
-          file.deletions = deletions;
+        } else {
+          // Use git diff HEAD to show all changes (staged + unstaged)
+          const { stdout: diffOutput } = await execAsync(
+            `git diff HEAD -- "${file.path}"`,
+            {
+              cwd: projectPath,
+              maxBuffer: 10 * 1024 * 1024,
+            },
+          );
+
+          if (diffOutput) {
+            diffs[file.path] = diffOutput;
+
+            // Count additions/deletions
+            const lines = diffOutput.split('\n');
+            let additions = 0;
+            let deletions = 0;
+            for (const line of lines) {
+              if (line.startsWith('+') && !line.startsWith('+++')) additions++;
+              if (line.startsWith('-') && !line.startsWith('---')) deletions++;
+            }
+            file.additions = additions;
+            file.deletions = deletions;
+          }
         }
       } catch (err) {
-        // File might be untracked or deleted
+        // File might be deleted or inaccessible
         console.error(`Failed to get diff for ${file.path}:`, err.message);
       }
     }

@@ -1105,6 +1105,9 @@ watch(currentSession, () => {
   openedFile.value = null;
   filesFilter.value = '';
 
+  // Close git diff modal on session change to avoid stale data
+  showGitDiffModal.value = false;
+
   // Don't reinitialize here - the projectStatus.cwd watcher will handle it
   // once the new project status arrives from the server
 });
