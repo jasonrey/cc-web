@@ -458,8 +458,13 @@ export function useChatWebSocket() {
         if (msg.sessionId === currentSession.value) {
           taskStatus.value = msg.status;
         }
-        // Refresh global sessions list when task completes to update timestamps
-        if (msg.status === 'completed' || msg.status === 'error') {
+        // Refresh global sessions list on status changes to update timestamps
+        // This ensures active sessions appear in the sidebar even before completion
+        if (
+          msg.status === 'running' ||
+          msg.status === 'completed' ||
+          msg.status === 'error'
+        ) {
           getRecentSessions();
         }
         break;
@@ -595,6 +600,7 @@ export function useChatWebSocket() {
     hasOlderMessages.value = false;
     summaryCount.value = 0;
     sessionTitle.value = null;
+    taskStatus.value = 'idle'; // Reset task status when switching sessions
     send({ type: 'select_session', sessionId, ...options });
     // Also get the session title
     send({ type: 'get_session_title', sessionId });
@@ -632,6 +638,7 @@ export function useChatWebSocket() {
     // The server will send back session_info with the new sessionId
     currentSession.value = null;
     messages.value = [];
+    taskStatus.value = 'idle'; // Reset task status for new session
     send({ type: 'new_session', ...options });
   }
 

@@ -10,7 +10,6 @@ const props = defineProps({
 
 const resultExpanded = ref(false);
 const finalResultExpanded = ref(false);
-const diffExpanded = ref(false);
 
 // Format timestamp for display
 const formattedTimestamp = computed(() => {
@@ -146,10 +145,6 @@ function toggleResultExpand() {
 function toggleFinalResultExpand() {
   finalResultExpanded.value = !finalResultExpanded.value;
 }
-
-function toggleDiffExpand() {
-  diffExpanded.value = !diffExpanded.value;
-}
 </script>
 
 <template>
@@ -173,7 +168,7 @@ function toggleDiffExpand() {
     </div>
 
     <!-- Tool use -->
-    <div v-else-if="messageType === 'tool_use'" class="tool-message">
+    <div v-else-if="messageType === 'tool_use'" class="tool-message" :data-tool-id="message.id" :data-tool-name="message.tool">
       <div class="tool-header">
         <span class="tool-icon">{{ toolDisplay.icon }}</span>
         <span class="tool-label">{{ message.tool }}</span>
@@ -190,12 +185,7 @@ function toggleDiffExpand() {
 
       <!-- Show diff for Edit tool -->
       <div v-if="isEditTool" class="tool-diff-section">
-        <div class="tool-diff-toggle" @click="toggleDiffExpand">
-          <span class="diff-icon">{{ diffExpanded ? '▼' : '▶' }}</span>
-          <span class="diff-label">{{ diffExpanded ? 'Hide diff' : 'Show diff' }}</span>
-        </div>
         <DiffViewer
-          v-if="diffExpanded"
           :old-content="message.input.old_string"
           :new-content="message.input.new_string"
           :filename="message.input.file_path"
@@ -560,33 +550,12 @@ function toggleDiffExpand() {
 /* Tool diff section */
 .tool-diff-section {
   border-top: 1px solid var(--border-color);
+  padding: 8px;
 }
 
-.tool-diff-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  cursor: pointer;
-  user-select: none;
-  background: var(--bg-tertiary);
-  transition: background 0.15s;
-}
-
-.tool-diff-toggle:hover {
-  background: var(--bg-hover);
-}
-
-.diff-icon {
-  font-size: 10px;
-  color: var(--text-secondary);
-  width: 12px;
-}
-
-.diff-label {
-  font-size: 12px;
-  color: var(--text-secondary);
-  font-weight: 500;
+.tool-diff-section :deep(.diff-viewer) {
+  margin: 0;
+  border-radius: 0;
 }
 
 /* Tool result */

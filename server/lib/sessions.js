@@ -129,8 +129,23 @@ function parseEntry(entry) {
       textContent = content;
     } else if (Array.isArray(content)) {
       // New format: array of content blocks
+      // Extract text blocks
       const textBlocks = content.filter((block) => block.type === 'text');
       textContent = textBlocks.map((block) => block.text).join('\n');
+
+      // Extract tool_result blocks
+      const toolResults = content.filter(
+        (block) => block.type === 'tool_result',
+      );
+      for (const result of toolResults) {
+        messages.push({
+          type: 'tool_result',
+          toolUseId: result.tool_use_id,
+          content: result.content,
+          isError: result.is_error || false,
+          timestamp: entry.timestamp,
+        });
+      }
     }
 
     if (textContent?.trim()) {

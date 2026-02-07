@@ -15,6 +15,10 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  hideHeader: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const diffLines = computed(() => {
@@ -75,7 +79,7 @@ const stats = computed(() => {
 
 <template>
   <div class="diff-viewer">
-    <div class="diff-header" v-if="filename">
+    <div class="diff-header" v-if="filename && !hideHeader">
       <span class="filename">{{ filename }}</span>
       <span class="stats">
         <span class="added">+{{ stats.added }}</span>
@@ -148,6 +152,7 @@ const stats = computed(() => {
   align-items: flex-start;
   line-height: 1.5;
   min-height: 21px;
+  white-space: nowrap;
 }
 
 .diff-line.added {
@@ -203,6 +208,5 @@ const stats = computed(() => {
   flex: 1;
   padding: 0 8px;
   white-space: pre;
-  overflow-x: auto;
 }
 </style>

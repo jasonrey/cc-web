@@ -17,6 +17,7 @@ const files = ref([]);
 const diffs = ref({});
 const selectedFile = ref(null);
 const error = ref(null);
+const showFileList = ref(true);
 
 onMounted(() => {
   loadGitDiff();
@@ -160,8 +161,23 @@ function close() {
         </div>
 
         <div v-else class="diff-layout">
+          <!-- Mobile file list toggle -->
+          <button class="mobile-toggle" @click="showFileList = !showFileList">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M3 12h18M3 6h18M3 18h18" />
+            </svg>
+            <span>{{ showFileList ? 'Hide' : 'Show' }} Files ({{ files.length }})</span>
+          </button>
+
           <!-- File list sidebar -->
-          <div class="file-list">
+          <div class="file-list" :class="{ hidden: !showFileList }">
             <div class="file-list-header">
               <span class="file-count">{{ files.length }} changed files</span>
             </div>
@@ -392,7 +408,8 @@ function close() {
 /* Diff viewer */
 .diff-viewer {
   flex: 1;
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: auto;
   background: var(--bg-primary);
 }
 
@@ -409,12 +426,15 @@ function close() {
   font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1.5;
+  display: inline-block;
+  min-width: 100%;
 }
 
 .diff-line {
   display: flex;
   padding: 0 16px;
   min-height: 21px;
+  white-space: nowrap;
 }
 
 .diff-line.header {
@@ -465,6 +485,67 @@ function close() {
 
 .line-content {
   white-space: pre;
-  overflow-x: auto;
+}
+
+/* Mobile toggle button */
+.mobile-toggle {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--bg-secondary);
+  border: none;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.15s;
+}
+
+.mobile-toggle:hover {
+  background: var(--bg-hover);
+}
+
+.mobile-toggle svg {
+  flex-shrink: 0;
+}
+
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+  .modal-overlay {
+    padding: 0;
+  }
+
+  .modal-container {
+    max-width: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .mobile-toggle {
+    display: flex;
+  }
+
+  .diff-layout {
+    flex-direction: column;
+  }
+
+  .file-list {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+    max-height: 40vh;
+    overflow-y: auto;
+  }
+
+  .file-list.hidden {
+    display: none;
+  }
+
+  .diff-viewer {
+    width: 100%;
+  }
 }
 </style>

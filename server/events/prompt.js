@@ -359,6 +359,7 @@ async function executePrompt(ws, projectSlug, sessionId, prompt, options = {}) {
               type: 'tool_use',
               tool: block.name,
               input: block.input,
+              id: block.id, // Include block ID for debugging
               timestamp: new Date().toISOString(),
               sessionId: taskSessionId,
               model: modelName,
