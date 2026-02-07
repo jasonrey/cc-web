@@ -33,6 +33,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { config, getProjectDisplayName, slugToPath } from '../config.js';
+import { logger } from '../lib/logger.js';
 import { getAllTitles } from '../lib/session-titles.js';
 import { send } from '../lib/ws.js';
 
@@ -46,9 +47,8 @@ export function handler(ws, message) {
     }
 
     const entries = readdirSync(config.projectsDir, { withFileTypes: true });
-    const allSessions = [];
-    // Track all session IDs globally to prevent duplicates across projects
-    const globalSessionIds = new Set();
+    // Track all sessions globally - use Map to keep the most recent version
+    const globalSessions = new Map(); // sessionId -> session object
 
     for (const entry of entries) {
       if (entry.isDirectory()) {
@@ -70,12 +70,6 @@ export function handler(ws, message) {
             for (const session of data.entries || []) {
               sessionIds.add(session.sessionId);
 
-              // Skip if already added from another project (shouldn't happen normally)
-              if (globalSessionIds.has(session.sessionId)) {
-                continue;
-              }
-              globalSessionIds.add(session.sessionId);
-
               // Use JSONL file mtime for accurate modification time
               // (sessions-index.json's modified field is stale)
               const jsonlPath = join(sessionsDir, `${session.sessionId}.jsonl`);
@@ -84,12 +78,15 @@ export function handler(ws, message) {
                 try {
                   const stats = statSync(jsonlPath);
                   modified = stats.mtime.toISOString();
-                } catch {
+                } catch (err) {
+                  logger.error(
+                    `Failed to stat ${jsonlPath}: ${err.message}`,
+                  );
                   // Fall back to index modified if stat fails
                 }
               }
 
-              allSessions.push({
+              const sessionData = {
                 sessionId: session.sessionId,
                 projectSlug,
                 projectName,
@@ -100,7 +97,13 @@ export function handler(ws, message) {
                 created: session.created,
                 modified,
                 title: titles[session.sessionId] || null,
-              });
+              };
+
+              // Keep the most recent version if duplicate sessionId across projects
+              const existing = globalSessions.get(session.sessionId);
+              if (!existing || new Date(modified) > new Date(existing.modified)) {
+                globalSessions.set(session.sessionId, sessionData);
+              }
             }
           } catch {
             // Skip projects with malformed index, but continue to scan directory
@@ -114,14 +117,10 @@ export function handler(ws, message) {
           for (const file of files) {
             if (file.endsWith('.jsonl') && !file.startsWith('agent-')) {
               const sessionId = file.replace('.jsonl', '');
-              // Skip if in project index or already added globally
-              if (
-                sessionIds.has(sessionId) ||
-                globalSessionIds.has(sessionId)
-              ) {
+              // Skip if already in this project's index
+              if (sessionIds.has(sessionId)) {
                 continue;
               }
-              globalSessionIds.add(sessionId);
 
               const jsonlPath = join(sessionsDir, file);
               try {
@@ -159,7 +158,8 @@ export function handler(ws, message) {
                   // Couldn't read first prompt, use default
                 }
 
-                allSessions.push({
+                const modified = stats.mtime.toISOString();
+                const sessionData = {
                   sessionId,
                   projectSlug,
                   projectName,
@@ -167,11 +167,17 @@ export function handler(ws, message) {
                   firstPrompt,
                   messageCount,
                   created: stats.birthtime.toISOString(),
-                  modified: stats.mtime.toISOString(),
+                  modified,
                   title: titles[sessionId] || null,
-                });
+                };
+
+                // Keep the most recent version if duplicate sessionId across projects
+                const existing = globalSessions.get(sessionId);
+                if (!existing || new Date(modified) > new Date(existing.modified)) {
+                  globalSessions.set(sessionId, sessionData);
+                }
               } catch (err) {
-                console.error(`Failed to stat ${file}:`, err.message);
+                logger.error(`Failed to stat ${file}:`, err.message);
               }
             }
           }
@@ -180,6 +186,9 @@ export function handler(ws, message) {
         }
       }
     }
+
+    // Convert Map to array
+    const allSessions = Array.from(globalSessions.values());
 
     // Sort by modification date (most recent first)
     allSessions.sort((a, b) => new Date(b.modified) - new Date(a.modified));
@@ -192,7 +201,7 @@ export function handler(ws, message) {
       sessions: limitedSessions,
     });
   } catch (err) {
-    console.error('Failed to load recent sessions:', err.message);
+    logger.error('Failed to load recent sessions:', err.message);
     send(ws, { type: 'recent_sessions', sessions: [] });
   }
 }

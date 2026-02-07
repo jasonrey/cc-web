@@ -325,6 +325,7 @@ npm run start
 - Editable in SessionsView and ChatView
 - Accurate timestamps (JSONL file mtime, refreshed on task complete)
 - Session active elsewhere warning (multi-tab detection)
+- Recent sessions deduplication (keeps most recent version when same session ID exists in multiple project paths)
 
 ### Terminal Mode
 - Shell command execution with output streaming

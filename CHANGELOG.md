@@ -2,6 +2,44 @@
 
 All notable changes to cc-web (Claude Code Web).
 
+## 2026-02-07 - Recent Sessions Deduplication
+
+### Session Management
+- **Duplicate session elimination**: Recent sessions now deduplicated across projects
+- **Most recent version preserved**: When same session ID exists in multiple project paths, keeps newest version
+- **Accurate timestamps**: Uses JSONL file modification time to determine most recent version
+- **Cleaner recent sessions list**: No more duplicate entries for moved/symlinked projects
+
+## 2026-02-06 - Diff Viewer Feature
+
+### Edit Tool Diff in Chat History
+- **Inline diff viewer**: Collapsible diff view for Edit tool operations
+- **Line-by-line comparison**: Shows added (green) and removed (red) lines
+- **Dual line numbers**: Old and new line numbers displayed side-by-side
+- **File stats**: Additions/deletions count in header
+- **Uses npm `diff` package**: Accurate line-by-line diff algorithm
+
+### Git Diff Modal
+- **Full-screen diff modal**: Click git branch indicator to view all changes
+- **File list sidebar**: Shows all changed files with A/M/D/R status badges
+- **File-by-file navigation**: Click files to view their diffs
+- **Unified diff display**: Proper syntax highlighting for diff format
+- **Untracked file support**: Shows entire content as added lines
+- **Renamed file support**: Properly extracts new path from rename format
+
+### Version Upgrade Feature
+- **Version display**: Current version shown in sidebar header
+- **Update notification**: Badge appears when new version available on npm
+- **One-click upgrade**: Upgrade button with dismiss option
+- **Daemon mode**: `npx cc-web -d` runs server in background
+- **Inverted spawn strategy**: New process spawns, old exits cleanly
+
+### Other Improvements
+- **Recent projects section**: Added to homepage below recent sessions
+- **Clickable project names**: Session list project names link to project page
+- **Message count fix**: Unindexed sessions now show accurate message counts
+- **Cloud-web favicon**: New monochrome cloud/web icon
+
 ## 2026-02-05 - UI Improvements & Bug Fixes
 
 ### Files Tab Reorganization
