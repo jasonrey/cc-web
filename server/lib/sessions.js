@@ -62,11 +62,15 @@ export function getSessionsList(projectSlug) {
             const jsonlPath = join(sessionsDir, file);
             try {
               const stats = statSync(jsonlPath);
-              // Read first line to get the first prompt
+              // Read first line to get the first prompt and count messages
               let firstPrompt = 'New session';
+              let messageCount = 0;
               try {
                 const content = readFileSync(jsonlPath, 'utf-8');
-                const firstLine = content.split('\n')[0];
+                const lines = content.split('\n').filter((line) => line.trim());
+                messageCount = lines.length;
+
+                const firstLine = lines[0];
                 if (firstLine) {
                   const entry = JSON.parse(firstLine);
                   if (entry.type === 'user' && entry.message?.content) {
@@ -89,7 +93,7 @@ export function getSessionsList(projectSlug) {
               sessionsMap.set(sessionId, {
                 sessionId,
                 firstPrompt,
-                messageCount: 0, // Can't easily count without parsing entire file
+                messageCount,
                 created: stats.birthtime.toISOString(),
                 modified: stats.mtime.toISOString(),
               });

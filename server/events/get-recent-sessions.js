@@ -126,7 +126,7 @@ export function handler(ws, message) {
               const jsonlPath = join(sessionsDir, file);
               try {
                 const stats = statSync(jsonlPath);
-                // Read first line to get the first prompt and count messages
+                // Read file to get first prompt and count messages
                 let firstPrompt = 'New session';
                 let messageCount = 0;
                 try {
