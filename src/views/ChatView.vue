@@ -36,6 +36,7 @@ const {
   summaryCount,
   sessionActiveElsewhere,
   terminalProcesses,
+  contextReady,
   connect,
   selectProject,
   selectSession,
@@ -500,6 +501,16 @@ function cancelEditingSessionTitle() {
 function handleSubmit() {
   const prompt = inputValue.value.trim();
   if (!prompt || isRunning.value) return;
+
+  // Check if server context is ready (prevents lost messages after reconnect)
+  if (!contextReady.value) {
+    console.warn(
+      '[ChatView] Cannot send prompt - server context not ready (reconnecting?)',
+    );
+    // Don't clear input - user can retry after reconnect completes
+    return;
+  }
+
   inputValue.value = '';
 
   // Clear TinyMDE editor content
@@ -1383,7 +1394,7 @@ watch(openedFile, (file) => {
       </div>
 
       <!-- Chat input -->
-      <form v-if="currentMode === 'chat'" class="input-form" :class="'permission-' + permissionMode" @submit.prevent="handleSubmit" @click="focusChatInput">
+      <form v-if="currentMode === 'chat'" class="input-form" :class="['permission-' + permissionMode, { 'reconnecting': !contextReady }]" @submit.prevent="handleSubmit" @click="focusChatInput">
         <span class="chat-prompt">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
@@ -1394,10 +1405,17 @@ watch(openedFile, (file) => {
           class="input tinyMDE"
           :style="{ maxHeight: textareaMaxHeight + 'px' }"
         ></div>
+        <!-- Reconnecting overlay -->
+        <span v-if="!contextReady" class="reconnecting-indicator" title="Reconnecting to server...">
+          <svg class="spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+          </svg>
+          Reconnecting...
+        </span>
         <button
           type="submit"
           class="send-btn"
-          :disabled="!inputValue.trim() || isRunning"
+          :disabled="!inputValue.trim() || isRunning || !contextReady"
           title="Send (Ctrl+Enter)"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -2512,13 +2530,14 @@ watch(openedFile, (file) => {
 }
 
 .input-form {
+  position: relative;
   display: flex;
   align-items: flex-end;
   gap: 12px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 10px 12px;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, opacity 0.15s;
   cursor: text;
 }
 
@@ -2605,6 +2624,41 @@ watch(openedFile, (file) => {
 .send-btn:not(:disabled):hover {
   color: var(--text-primary);
   background: var(--bg-hover);
+}
+
+/* Reconnecting state */
+.input-form.reconnecting {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.input-form.reconnecting .input {
+  pointer-events: none;
+}
+
+.reconnecting-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+  background: var(--bg-primary);
+  padding: 4px 10px;
+  border-radius: 4px;
+  z-index: 10;
+}
+
+.reconnecting-indicator .spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* Terminal mode styles */

@@ -392,6 +392,9 @@ export function useChatWebSocket() {
     gitBranch: null,
     gitChanges: null,
   });
+  // Track if server-side context is ready (project selected and acknowledged)
+  // This prevents sending prompts before server has our context after reconnect
+  const contextReady = ref(false);
 
   // Terminal state
   const terminalProcesses = ref([]); // Array of process entries
@@ -425,6 +428,8 @@ export function useChatWebSocket() {
     ws.onclose = () => {
       connected.value = false;
       connectionState.value = 'disconnected';
+      // Server context is lost on disconnect - need to re-select project on reconnect
+      contextReady.value = false;
       // Only reconnect if ws reference still exists (not explicitly disconnected)
       const shouldReconnect = ws !== null;
       ws = null;
@@ -446,6 +451,8 @@ export function useChatWebSocket() {
 
       case 'project_selected':
         currentProject.value = msg.project || { slug: msg.path };
+        // Server has acknowledged our project selection - context is ready
+        contextReady.value = true;
         break;
 
       case 'session_selected':
@@ -517,19 +524,17 @@ export function useChatWebSocket() {
       case 'result':
       case 'error':
         // Filter out messages that don't belong to the current session
+        // Both client and server sessionId must match (and both must be non-null)
         if (msg.sessionId && msg.sessionId === currentSession.value) {
           messages.value = [...messages.value, msg];
-        } else if (!msg.sessionId) {
-          // Legacy messages without sessionId (shouldn't happen with new code)
-          console.warn(
-            '[useChatWebSocket] Message without sessionId:',
-            msg.type,
-          );
+        } else if (!msg.sessionId && !currentSession.value) {
+          // Both are null/undefined - this happens during new session creation
+          // before the server assigns an ID. Accept these messages.
           messages.value = [...messages.value, msg];
-        } else if (msg.sessionId !== currentSession.value) {
-          // Log cross-session messages to help debug the issue
+        } else {
+          // Mismatch - log for debugging but don't append
           console.warn(
-            `[useChatWebSocket] Received message for different session. Message sessionId: ${msg.sessionId}, Current sessionId: ${currentSession.value}, Message type: ${msg.type}`,
+            `[useChatWebSocket] Ignoring message for different session. Message sessionId: ${msg.sessionId}, Current sessionId: ${currentSession.value}, Message type: ${msg.type}`,
           );
         }
         break;
@@ -661,6 +666,13 @@ export function useChatWebSocket() {
   }
 
   function sendPrompt(prompt, options = {}) {
+    // Warn if context is not ready (server may not have our project/session yet)
+    if (!contextReady.value) {
+      console.warn(
+        '[useChatWebSocket] sendPrompt called but server context not ready. ' +
+          'This can happen after reconnect - prompt may go to wrong session.',
+      );
+    }
     send({ type: 'prompt', prompt, ...options });
   }
 
@@ -703,6 +715,7 @@ export function useChatWebSocket() {
     // State (readonly)
     connected: readonly(connected),
     connectionState: readonly(connectionState),
+    contextReady: readonly(contextReady),
     messages: readonly(messages),
     currentProject: readonly(currentProject),
     currentSession: readonly(currentSession),
