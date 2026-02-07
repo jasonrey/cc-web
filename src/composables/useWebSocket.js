@@ -167,16 +167,22 @@ function handleGlobalMessage(msg) {
             status: 'running',
             timestamp: Date.now(),
           });
+          // Refresh sessions to show running session in sidebar
+          getRecentSessions();
         } else if (msg.status === 'completed') {
           newStatuses.set(msg.sessionId, {
             status: 'completed',
             timestamp: Date.now(),
           });
+          // Refresh sessions to update timestamps
+          getRecentSessions();
         } else if (msg.status === 'error') {
           newStatuses.set(msg.sessionId, {
             status: 'error',
             timestamp: Date.now(),
           });
+          // Refresh sessions to update timestamps
+          getRecentSessions();
         } else if (msg.status === 'idle' || msg.status === 'cancelled') {
           // Clear status for idle/cancelled
           newStatuses.delete(msg.sessionId);
@@ -270,7 +276,26 @@ function getSessions() {
   sendGlobal({ type: 'get_sessions' });
 }
 
+// Debounced getRecentSessions to prevent multiple rapid calls
+let recentSessionsDebounceTimer = null;
 function getRecentSessions() {
+  // Clear any pending request
+  if (recentSessionsDebounceTimer) {
+    clearTimeout(recentSessionsDebounceTimer);
+  }
+  // Debounce by 150ms - fast enough to feel responsive, slow enough to batch
+  recentSessionsDebounceTimer = setTimeout(() => {
+    recentSessionsDebounceTimer = null;
+    sendGlobal({ type: 'get_recent_sessions' });
+  }, 150);
+}
+
+// Immediate version for explicit user actions (e.g., opening sidebar)
+function getRecentSessionsImmediate() {
+  if (recentSessionsDebounceTimer) {
+    clearTimeout(recentSessionsDebounceTimer);
+    recentSessionsDebounceTimer = null;
+  }
   sendGlobal({ type: 'get_recent_sessions' });
 }
 
@@ -329,6 +354,7 @@ export function useWebSocket() {
     selectProject: selectProjectGlobal,
     getSessions,
     getRecentSessions,
+    getRecentSessionsImmediate,
     browseFolder,
     setSessionTitle,
     deleteSession: deleteSessionGlobal,
@@ -458,15 +484,7 @@ export function useChatWebSocket() {
         if (msg.sessionId === currentSession.value) {
           taskStatus.value = msg.status;
         }
-        // Refresh global sessions list on status changes to update timestamps
-        // This ensures active sessions appear in the sidebar even before completion
-        if (
-          msg.status === 'running' ||
-          msg.status === 'completed' ||
-          msg.status === 'error'
-        ) {
-          getRecentSessions();
-        }
+        // Note: Session list refresh is handled by global WS handler (debounced)
         break;
 
       case 'session_info':

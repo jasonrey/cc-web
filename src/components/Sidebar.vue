@@ -23,7 +23,7 @@ const {
   currentVersion,
   updateAvailable,
   getProjects,
-  getRecentSessions,
+  getRecentSessionsImmediate,
   dismissUpdate,
   send,
 } = useWebSocket();
@@ -87,11 +87,11 @@ const activeTab = ref('sessions');
 const currentProject = computed(() => route.params.project);
 const currentSession = computed(() => route.params.session);
 
-// Fetch data when connected
+// Fetch data when connected (use immediate for explicit user actions)
 function fetchData() {
   if (connected.value) {
     getProjects();
-    getRecentSessions();
+    getRecentSessionsImmediate();
   }
 }
 

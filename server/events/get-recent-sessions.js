@@ -79,9 +79,7 @@ export function handler(ws, message) {
                   const stats = statSync(jsonlPath);
                   modified = stats.mtime.toISOString();
                 } catch (err) {
-                  logger.error(
-                    `Failed to stat ${jsonlPath}: ${err.message}`,
-                  );
+                  logger.error(`Failed to stat ${jsonlPath}: ${err.message}`);
                   // Fall back to index modified if stat fails
                 }
               }
@@ -101,7 +99,10 @@ export function handler(ws, message) {
 
               // Keep the most recent version if duplicate sessionId across projects
               const existing = globalSessions.get(session.sessionId);
-              if (!existing || new Date(modified) > new Date(existing.modified)) {
+              if (
+                !existing ||
+                new Date(modified) > new Date(existing.modified)
+              ) {
                 globalSessions.set(session.sessionId, sessionData);
               }
             }
@@ -173,7 +174,10 @@ export function handler(ws, message) {
 
                 // Keep the most recent version if duplicate sessionId across projects
                 const existing = globalSessions.get(sessionId);
-                if (!existing || new Date(modified) > new Date(existing.modified)) {
+                if (
+                  !existing ||
+                  new Date(modified) > new Date(existing.modified)
+                ) {
                   globalSessions.set(sessionId, sessionData);
                 }
               } catch (err) {

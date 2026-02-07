@@ -2,7 +2,13 @@
 
 All notable changes to cc-web (Claude Code Web).
 
-## 2026-02-07 - Recent Sessions Deduplication
+## 2026-02-07 - WebSocket Optimization & Session Deduplication
+
+### WebSocket Flow Optimization
+- **Eliminated triple-send on task status**: Reduced from 3 sends to single broadcast
+- **Debounced session refresh**: `getRecentSessions()` now debounced (150ms) to prevent redundant calls
+- **Consolidated task_status handling**: Global WS handles sidebar indicators and session refresh
+- **Removed redundant broadcasts**: Session list no longer broadcast on new session (triggered by task_status instead)
 
 ### Session Management
 - **Duplicate session elimination**: Recent sessions now deduplicated across projects

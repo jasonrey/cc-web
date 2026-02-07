@@ -4,7 +4,7 @@ import CommandPalette from './components/CommandPalette.vue';
 import Sidebar from './components/Sidebar.vue';
 import { useWebSocket } from './composables/useWebSocket';
 
-const { connect, disconnect, recentSessions, getRecentSessions } =
+const { connect, disconnect, recentSessions, getRecentSessionsImmediate } =
   useWebSocket();
 
 // Command palette state
@@ -15,8 +15,8 @@ function handleGlobalKeydown(e) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
     e.preventDefault();
     showPalette.value = true;
-    // Refresh sessions when opening palette
-    getRecentSessions();
+    // Refresh sessions when opening palette (immediate for user action)
+    getRecentSessionsImmediate();
   }
 }
 

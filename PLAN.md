@@ -388,7 +388,7 @@ npm run start
 ### High Priority
 - [x] Better text editor for chat input - TinyMDE (inline markdown preview)
 - [x] Files mode - browse and edit project files
-- [ ] File diff viewer (for changed files in git repo)
+- [x] File diff viewer (for changed files in git repo)
 
 ### Medium Priority
 - [x] Session deletion
@@ -396,6 +396,10 @@ npm run start
 - [ ] File tree view in chat sidebar
 - [ ] Message actions (copy, retry, edit & resend)
 - [ ] Syntax highlighting for code files in file editor (highlight.js or Prism)
+- [ ] Refactor ChatView.vue (3000+ lines) into mode-specific components:
+  - ChatMode.vue - Message list, input, TinyMDE editor
+  - TerminalMode.vue - Terminal input, process list
+  - FilesMode.vue - File explorer wrapper (uses existing FileExplorer/FileEditor)
 
 ### Low Priority
 - [ ] Mobile responsive design improvements

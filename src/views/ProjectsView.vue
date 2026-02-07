@@ -15,7 +15,7 @@ const {
   currentFolder,
   connect,
   getProjects,
-  getRecentSessions,
+  getRecentSessionsImmediate,
   browseFolder,
 } = useWebSocket();
 
@@ -33,7 +33,7 @@ const quickProjects = computed(() => projects.value.slice(0, 5));
 onMounted(() => {
   connect(() => {
     getProjects();
-    getRecentSessions();
+    getRecentSessionsImmediate();
     // Start folder browser from home
     if (!currentFolder.value) {
       browseFolder(null);

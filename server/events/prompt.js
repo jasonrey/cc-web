@@ -24,8 +24,6 @@
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { config, slugToPath } from '../config.js';
 import { loadMcpServers } from '../lib/mcp.js';
-import { getAllTitles } from '../lib/session-titles.js';
-import { getSessionsList } from '../lib/sessions.js';
 import { addTaskResult, getOrCreateTask, tasks } from '../lib/tasks.js';
 import {
   broadcast,
@@ -42,20 +40,10 @@ function sendAndBroadcast(ws, sessionId, message) {
   }
 }
 
-// Helper to send task status globally (to all clients) and to session watchers
-function sendTaskStatusGlobally(ws, sessionId, statusMessage) {
-  // Add sessionId to the message
+// Helper to broadcast task status to all clients
+// Single broadcast reaches everyone - no need for separate send/broadcastToSession
+function broadcastTaskStatus(sessionId, statusMessage) {
   const messageWithSession = { ...statusMessage, sessionId };
-
-  // Send to requesting client
-  send(ws, messageWithSession);
-
-  // Broadcast to session watchers
-  if (sessionId) {
-    broadcastToSession(sessionId, messageWithSession, ws);
-  }
-
-  // Broadcast to ALL clients for sidebar indicators
   broadcast(messageWithSession);
 }
 
@@ -185,7 +173,7 @@ async function executePrompt(ws, projectSlug, sessionId, prompt, options = {}) {
   addTaskResult(task, userMessage);
   sendAndBroadcast(ws, taskSessionId, userMessage);
 
-  sendTaskStatusGlobally(ws, taskSessionId, {
+  broadcastTaskStatus(taskSessionId, {
     type: 'task_status',
     taskId: task.id,
     status: 'running',
@@ -251,7 +239,7 @@ async function executePrompt(ws, projectSlug, sessionId, prompt, options = {}) {
     };
     addTaskResult(task, errorResult);
     sendAndBroadcast(ws, taskSessionId, errorResult);
-    sendTaskStatusGlobally(ws, taskSessionId, {
+    broadcastTaskStatus(taskSessionId, {
       type: 'task_status',
       taskId: task.id,
       status: 'error',
@@ -266,7 +254,7 @@ async function executePrompt(ws, projectSlug, sessionId, prompt, options = {}) {
       if (abortController.signal.aborted) {
         console.log(`Task ${task.id} was cancelled`);
         task.status = 'cancelled';
-        sendTaskStatusGlobally(ws, taskSessionId, {
+        broadcastTaskStatus(taskSessionId, {
           type: 'task_status',
           taskId: task.id,
           status: 'cancelled',
@@ -302,26 +290,8 @@ async function executePrompt(ws, projectSlug, sessionId, prompt, options = {}) {
             projectPath,
             isNew: isNewSession,
           });
-
-          // If this is a new session, broadcast updates
-          if (isNewSession) {
-            try {
-              const sessions = getSessionsList(projectSlug);
-              const titles = getAllTitles(projectSlug);
-              const enrichedSessions = sessions.map((s) => ({
-                ...s,
-                title: titles[s.sessionId] || null,
-              }));
-              // Include projectSlug so clients can filter
-              broadcast({
-                type: 'sessions_list',
-                projectSlug,
-                sessions: enrichedSessions,
-              });
-            } catch (err) {
-              console.error('Failed to broadcast updated sessions list:', err);
-            }
-          }
+          // Note: No need to broadcast sessions_list here - clients will
+          // refresh via getRecentSessions() when task_status changes
         }
       }
 
@@ -384,7 +354,7 @@ async function executePrompt(ws, projectSlug, sessionId, prompt, options = {}) {
     }
 
     task.status = 'completed';
-    sendTaskStatusGlobally(ws, taskSessionId, {
+    broadcastTaskStatus(taskSessionId, {
       type: 'task_status',
       taskId: task.id,
       status: 'completed',
@@ -447,7 +417,7 @@ async function executePrompt(ws, projectSlug, sessionId, prompt, options = {}) {
     };
     addTaskResult(task, errorResult);
     sendAndBroadcast(ws, taskSessionId, errorResult);
-    sendTaskStatusGlobally(ws, taskSessionId, {
+    broadcastTaskStatus(taskSessionId, {
       type: 'task_status',
       taskId: task.id,
       status: 'error',
