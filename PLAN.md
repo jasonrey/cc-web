@@ -90,6 +90,7 @@ claude-web/
 │   ├── components/
 │   │   ├── AppHeader.vue     # Common header with connection status
 │   │   ├── Sidebar.vue       # Navigation sidebar (ChatView)
+│   │   ├── ChatMessages.vue  # Chat message list, scroll, typing indicator
 │   │   ├── MessageItem.vue   # Message rendering
 │   │   └── TerminalOutput.vue # Terminal output display
 │   ├── assets/
@@ -396,10 +397,11 @@ npm run start
 - [ ] File tree view in chat sidebar
 - [ ] Message actions (copy, retry, edit & resend)
 - [ ] Syntax highlighting for code files in file editor (highlight.js or Prism)
-- [ ] Refactor ChatView.vue (3000+ lines) into mode-specific components:
-  - ChatMode.vue - Message list, input, TinyMDE editor
-  - TerminalMode.vue - Terminal input, process list
-  - FilesMode.vue - File explorer wrapper (uses existing FileExplorer/FileEditor)
+- [ ] Continue refactoring ChatView.vue (~2900 lines) into mode-specific components:
+  - [x] ChatMessages.vue - Message list, scroll behavior, typing indicator (extracted)
+  - [ ] ChatMode.vue - Input area, TinyMDE editor, send logic
+  - [ ] TerminalMode.vue - Terminal input, process list
+  - [ ] FilesMode.vue - File explorer wrapper (uses existing FileExplorer/FileEditor)
 
 ### Low Priority
 - [ ] Mobile responsive design improvements

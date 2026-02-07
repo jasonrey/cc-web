@@ -2,7 +2,7 @@
 
 All notable changes to cc-web (Claude Code Web).
 
-## 2026-02-07 - WebSocket Optimization & Session Deduplication
+## 2026-02-07 - WebSocket Optimization & Code Refactoring
 
 ### WebSocket Flow Optimization
 - **Eliminated triple-send on task status**: Reduced from 3 sends to single broadcast
@@ -15,6 +15,15 @@ All notable changes to cc-web (Claude Code Web).
 - **Most recent version preserved**: When same session ID exists in multiple project paths, keeps newest version
 - **Accurate timestamps**: Uses JSONL file modification time to determine most recent version
 - **Cleaner recent sessions list**: No more duplicate entries for moved/symlinked projects
+
+### Code Refactoring
+- **ChatMessages.vue component**: Extracted from ChatView.vue (~100 lines)
+  - Message list rendering with tool grouping
+  - Auto-scroll behavior (on new messages and when running)
+  - Typing indicator animation
+  - Jump-to-bottom button
+  - Load older messages button
+  - Empty/loading states
 
 ## 2026-02-06 - Diff Viewer Feature
 

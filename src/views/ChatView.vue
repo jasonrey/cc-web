@@ -10,6 +10,7 @@ import {
   watch,
 } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import ChatMessages from '../components/ChatMessages.vue';
 import FileEditor from '../components/FileEditor.vue';
 import FileExplorer from '../components/FileExplorer.vue';
 import GitDiffModal from '../components/GitDiffModal.vue';
@@ -303,13 +304,12 @@ onUnmounted(() => {
 });
 
 const inputValue = ref('');
-const messagesEl = ref(null);
+const chatMessagesRef = ref(null); // ChatMessages component ref
 const textareaEl = ref(null);
 const editorEl = ref(null); // TinyMDE container
 const editorInstance = ref(null); // TinyMDE instance
 const permissionMode = ref('default');
 const modelSelection = ref('sonnet'); // 'sonnet' | 'opus' | 'haiku'
-const userScrolledUp = ref(false);
 const textareaMaxHeight = ref(200); // Default max height, can be adjusted by resize handle
 const isResizing = ref(false);
 
@@ -525,34 +525,7 @@ function handleSubmit() {
 }
 
 function scrollToBottom() {
-  if (messagesEl.value) {
-    // Use requestAnimationFrame to ensure DOM has updated
-    requestAnimationFrame(() => {
-      if (messagesEl.value) {
-        messagesEl.value.scrollTop = messagesEl.value.scrollHeight;
-        userScrolledUp.value = false;
-      }
-    });
-  }
-}
-
-// Check if user is near bottom of scroll
-function checkScrollPosition() {
-  if (!messagesEl.value) return;
-  const el = messagesEl.value;
-  const threshold = 150; // pixels from bottom to consider "at bottom"
-  const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-
-  // Show jump-to-bottom button if scrolled up beyond threshold
-  if (distanceFromBottom > threshold) {
-    userScrolledUp.value = true;
-  } else {
-    userScrolledUp.value = false;
-  }
-}
-
-function handleScroll() {
-  checkScrollPosition();
+  chatMessagesRef.value?.scrollToBottom();
 }
 
 function autoResize() {
@@ -604,35 +577,7 @@ watch(inputValue, () => {
   nextTick(autoResize);
 });
 
-// Auto-scroll on new messages
-watch(
-  () => messages.value.length,
-  (newLength, oldLength) => {
-    // If messages just loaded (0 to N), always scroll to bottom
-    if (oldLength === 0 && newLength > 0) {
-      userScrolledUp.value = false;
-      nextTick(() => {
-        scrollToBottom();
-        // Double-check after a short delay to ensure DOM is fully rendered
-        setTimeout(scrollToBottom, 100);
-      });
-    }
-    // Otherwise only scroll if user hasn't scrolled up
-    else if (!userScrolledUp.value) {
-      nextTick(scrollToBottom);
-    }
-  },
-);
-
-// Auto-scroll when task starts running (typing indicator appears)
-watch(isRunning, (running) => {
-  if (running && !userScrolledUp.value) {
-    // Wait for typing indicator to render, then scroll
-    nextTick(() => {
-      setTimeout(scrollToBottom, 50);
-    });
-  }
-});
+// Note: Auto-scroll on messages and isRunning are now handled by ChatMessages component
 
 // Initialize terminal mode when connection is ready
 watch(connected, (isConnected) => {
@@ -647,7 +592,6 @@ watch(currentMode, (mode, oldMode) => {
     // Clear editor instance since DOM was destroyed
     editorInstance.value = null;
     nextTick(() => {
-      userScrolledUp.value = false;
       scrollToBottom();
       // Reinitialize TinyMDE after DOM is ready
       initTinyMDE();
@@ -707,43 +651,7 @@ watch(
   { deep: true },
 );
 
-// Group consecutive tool_use and tool_result messages together
-const groupedMessages = computed(() => {
-  const result = [];
-  let currentToolGroup = null;
-
-  for (const msg of messages.value) {
-    if (msg.type === 'tool_use') {
-      // Start or continue a tool group
-      if (!currentToolGroup) {
-        currentToolGroup = { type: 'tool_group', items: [] };
-      }
-      currentToolGroup.items.push(msg);
-    } else if (msg.type === 'tool_result') {
-      // Add to existing tool group
-      if (currentToolGroup) {
-        currentToolGroup.items.push(msg);
-      } else {
-        // Orphan tool_result, show as-is
-        result.push(msg);
-      }
-    } else {
-      // Non-tool message: flush any pending tool group
-      if (currentToolGroup) {
-        result.push(currentToolGroup);
-        currentToolGroup = null;
-      }
-      result.push(msg);
-    }
-  }
-
-  // Flush any remaining tool group
-  if (currentToolGroup) {
-    result.push(currentToolGroup);
-  }
-
-  return result;
-});
+// Note: groupedMessages computed is now inside ChatMessages component
 
 // Terminal functions
 function toggleTerminalMode() {
@@ -1248,50 +1156,16 @@ watch(openedFile, (file) => {
     </div>
 
     <!-- Chat Mode -->
-    <div v-if="currentMode === 'chat'" class="messages-container">
-      <main class="messages" ref="messagesEl" @scroll="handleScroll">
-        <div class="messages-inner" v-if="messages.length > 0">
-        <!-- Load older messages button -->
-        <div class="older-messages" v-if="hasOlderMessages">
-          <button class="load-older-btn" @click="loadFullHistory">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 19V5M5 12l7-7 7 7"/>
-            </svg>
-            Load older messages
-            <span class="summary-badge" v-if="summaryCount > 0">{{ summaryCount }} compaction{{ summaryCount > 1 ? 's' : '' }}</span>
-          </button>
-        </div>
-        <template v-for="(msg, index) in groupedMessages" :key="index">
-          <ToolGroup v-if="msg.type === 'tool_group'" :items="msg.items" />
-          <MessageItem v-else :message="msg" />
-        </template>
-      </div>
-      <div class="empty" v-else-if="!isRunning && isNewSession">
-        <p>Start a conversation</p>
-        <p class="empty-hint">Type a message below to begin.</p>
-      </div>
-      <div class="loading" v-else-if="!isRunning && !isNewSession">
-        <p>Loading...</p>
-      </div>
-      <div class="typing" v-if="isRunning">
-        <span class="dot"></span>
-        <span class="dot"></span>
-        <span class="dot"></span>
-      </div>
-      </main>
-
-      <!-- Jump to bottom button (floats within chat area) -->
-      <button
-        v-if="userScrolledUp"
-        class="jump-to-bottom"
-        @click="scrollToBottom"
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 5v14M5 12l7 7 7-7"/>
-        </svg>
-        Jump to bottom
-      </button>
-    </div>
+    <ChatMessages
+      v-if="currentMode === 'chat'"
+      ref="chatMessagesRef"
+      :messages="messages"
+      :is-running="isRunning"
+      :is-new-session="isNewSession"
+      :has-older-messages="hasOlderMessages"
+      :summary-count="summaryCount"
+      @load-full-history="loadFullHistory"
+    />
 
     <!-- Terminal Mode -->
     <main v-else-if="currentMode === 'terminal'" class="terminal">
