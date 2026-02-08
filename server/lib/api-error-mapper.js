@@ -4,7 +4,10 @@
 export function mapApiError(error) {
   const errorMsg = error.message || String(error);
 
-  if (errorMsg.includes('API Error: 500') || errorMsg.includes('Internal server error')) {
+  if (
+    errorMsg.includes('API Error: 500') ||
+    errorMsg.includes('Internal server error')
+  ) {
     return 'Claude API is temporarily unavailable (500 Internal Server Error). This is usually a temporary issue - please try again in a few moments.';
   }
 

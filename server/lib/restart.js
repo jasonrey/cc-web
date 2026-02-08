@@ -1,8 +1,9 @@
 /**
  * Shared restart utility for server restarts and upgrades
  */
-import { randomBytes } from 'node:crypto';
+
 import { spawn } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { logger } from './logger.js';
 
 /**
@@ -30,7 +31,9 @@ export async function restartWithInvertedSpawn(reason, newVersion = null) {
 
   newProc.unref(); // Allow this process to exit independently
 
-  logger.log(`New server process spawned (PID: ${newProc.pid}, reason: ${reason}${newVersion ? `, version: ${newVersion}` : ''})`);
+  logger.log(
+    `New server process spawned (PID: ${newProc.pid}, reason: ${reason}${newVersion ? `, version: ${newVersion}` : ''})`,
+  );
 
   // Wait for new server to be ready (verify it started)
   await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -40,7 +43,7 @@ export async function restartWithInvertedSpawn(reason, newVersion = null) {
     // Send signal 0 to check if process exists (doesn't actually signal it)
     process.kill(newProc.pid, 0);
     logger.log(`Verified new server process is running (PID: ${newProc.pid})`);
-  } catch (err) {
+  } catch (_err) {
     throw new Error(`New server process failed to start (PID: ${newProc.pid})`);
   }
 

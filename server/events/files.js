@@ -24,9 +24,12 @@ function validatePath(requestedPath, context) {
   }
 
   // Check if resolved path is within any allowed root
-  const isAllowed = allowedRoots.some(root => {
+  const isAllowed = allowedRoots.some((root) => {
     const normalizedRoot = path.resolve(root);
-    return resolved === normalizedRoot || resolved.startsWith(normalizedRoot + path.sep);
+    return (
+      resolved === normalizedRoot ||
+      resolved.startsWith(normalizedRoot + path.sep)
+    );
   });
 
   if (!isAllowed) {

@@ -107,12 +107,15 @@ initVersionChecker(pkg.version);
 
 // Initialize periodic task cleanup (every hour)
 const { clearOldTasks } = await import('./lib/tasks.js');
-global.taskCleanupInterval = setInterval(() => {
-  const cleared = clearOldTasks();
-  if (cleared > 0) {
-    logger.log(`Cleared ${cleared} old tasks`);
-  }
-}, 60 * 60 * 1000); // Every hour
+global.taskCleanupInterval = setInterval(
+  () => {
+    const cleared = clearOldTasks();
+    if (cleared > 0) {
+      logger.log(`Cleared ${cleared} old tasks`);
+    }
+  },
+  60 * 60 * 1000,
+); // Every hour
 
 const app = express();
 const server = createServer(app);

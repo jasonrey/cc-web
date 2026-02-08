@@ -160,6 +160,9 @@ async function executePrompt(ws, projectSlug, sessionId, prompt, options = {}) {
   task.startTime = Date.now();
   task.abortController = abortController;
 
+  // Pass abort controller to SDK so it can actually cancel the API request
+  queryOptions.abortController = abortController;
+
   // Add user message and send to client immediately (and broadcast to other watchers)
   const userMessage = {
     type: 'user',

@@ -30,6 +30,7 @@ All notable changes to cc-web (Claude Code Web).
 - **Session Loading Skeleton**: Animated skeleton placeholders instead of plain "Loading..." text
 - **Git Branch Color Coding**: Visual color coding (green: main/master, orange: wip/hotfix, yellow: feature)
 - **Terminal CWD Display**: Editable current working directory field below terminal input
+- **Stop Button Fix**: Stop button now actually cancels the running Claude API request (passes abort controller to SDK)
 
 ### Conversation Turn Navigation
 - **Turn-based message grouping**: Messages grouped by conversation turn (user message + all responses)

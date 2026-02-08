@@ -15,8 +15,8 @@
  * See: docs/FEATURE_UPDATE_VERSION.md Section 8.3
  */
 
-import { broadcast } from '../lib/ws.js';
 import { restartWithInvertedSpawn } from '../lib/restart.js';
+import { broadcast } from '../lib/ws.js';
 
 /**
  * Handle restart request from frontend (POC)
