@@ -12,6 +12,7 @@ import {
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { getSessionsDir } from '../config.js';
+import { loadTitles } from './session-titles.js';
 
 /**
  * Get sessions list for a project
@@ -25,6 +26,9 @@ export function getSessionsList(projectSlug) {
   try {
     const sessionsDir = getSessionsDir(projectSlug);
     const indexPath = join(sessionsDir, 'sessions-index.json');
+
+    // Load custom titles from .session-titles.json (SDK-safe storage)
+    const titles = loadTitles(projectSlug);
 
     // Start with indexed sessions
     const sessionsMap = new Map();
@@ -47,8 +51,8 @@ export function getSessionsList(projectSlug) {
           messageCount: entry.messageCount || 0,
           created: entry.created,
           modified,
-          // Include native customTitle from sessions-index.json
-          title: entry.customTitle || null,
+          // Use .session-titles.json (SDK overwrites sessions-index.json customTitle)
+          title: titles[entry.sessionId] || null,
         });
       }
     }

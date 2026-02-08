@@ -34,6 +34,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { config, getProjectDisplayName, slugToPath } from '../config.js';
 import { logger } from '../lib/logger.js';
+import { loadTitles } from '../lib/session-titles.js';
 import { send } from '../lib/ws.js';
 
 export function handler(ws, message) {
@@ -56,6 +57,9 @@ export function handler(ws, message) {
         const indexPath = join(sessionsDir, 'sessions-index.json');
         const projectName = getProjectDisplayName(projectSlug);
         const projectPath = slugToPath(projectSlug);
+
+        // Load custom titles from .session-titles.json (SDK-safe storage)
+        const titles = loadTitles(projectSlug);
 
         // Track sessions we've already added for this project
         const sessionIds = new Set();
@@ -92,8 +96,8 @@ export function handler(ws, message) {
                 messageCount: session.messageCount || 0,
                 created: session.created,
                 modified,
-                // Use native customTitle from sessions-index.json
-                title: session.customTitle || null,
+                // Use .session-titles.json (SDK overwrites sessions-index.json customTitle)
+                title: titles[session.sessionId] || null,
               };
 
               // Keep the most recent version if duplicate sessionId across projects
