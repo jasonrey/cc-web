@@ -426,8 +426,9 @@ function close() {
   font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1.5;
-  display: inline-block;
-  min-width: 100%;
+  /* Changed from inline-block to block for proper scrolling */
+  display: block;
+  min-width: fit-content;
 }
 
 .diff-line {
