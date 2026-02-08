@@ -76,6 +76,7 @@ export async function handler(ws, message, context) {
 
   send(ws, {
     type: 'task_status',
+    sessionId: sessionId,
     taskId: task?.id || null,
     status: task?.status || 'idle',
     resultsCount: history.length,
