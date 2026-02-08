@@ -326,8 +326,9 @@ function close() {
 /* Diff layout */
 .diff-layout {
   display: flex;
-  height: 100%;
+  flex: 1;
   min-height: 0;
+  overflow: hidden;
 }
 
 /* File list */
@@ -337,6 +338,7 @@ function close() {
   display: flex;
   flex-direction: column;
   background: var(--bg-secondary);
+  overflow-y: auto;
 }
 
 .file-list-header {
