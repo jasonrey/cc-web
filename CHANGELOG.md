@@ -2,6 +2,30 @@
 
 All notable changes to cc-web (Claude Code Web).
 
+## 2026-02-11 - File Reference & UX Improvements
+
+### New Features
+- **File Reference Context Menu**: Right-click files in Files tab to add `@filepath` references to chat input
+  - Smart whitespace handling: auto-adds space when needed
+  - Auto-switches to chat mode
+  - Only available for files (not directories)
+
+### UX Improvements
+- **Clear/Undo Chat Input**: Clear button with undo functionality to restore cleared text
+- **Reconnecting State**: Shows "Reconnecting..." indicator when WebSocket disconnects
+- **New Session Loading**: Better handling of new session creation and reconnection
+- **Clear/Undo Button Reactivity**: Fixed reactivity issues with clear/undo button state
+
+### Bug Fixes
+- **Port Binding During Restart**: Added `UPGRADE_RETRY_BIND` environment variable to retry port binding
+  - Fixes issue where server restart fails due to port still in use
+  - Implements retry logic with exponential backoff (max 20 retries)
+  - Critical for seamless in-app restart and one-click upgrade functionality
+
+### Documentation
+- **Environment Variables**: Documented `DISABLE_UPDATE_CHECK` and `UPDATE_CHECK_INTERVAL` in `.env.example` and README
+- **Version Update Feature**: Moved completed feature documentation to `docs/completed/`
+
 ## 2026-02-10 - Enhanced CLI & Configuration System
 
 ### CLI Enhancements

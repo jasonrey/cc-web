@@ -88,6 +88,8 @@ cc-web --help
 | Debug | `--debug` | `"debug": true` | `DEBUG=true` |
 | Log file | `--log-file <path>` | `"logFile": "<path>"` | `LOG_FILE=<path>` |
 | Bypass token | `--bypass-token <token>` | `"bypassToken": "<token>"` | `DEBUG_TOKEN=<token>` |
+| Disable update check | - | - | `DISABLE_UPDATE_CHECK=true` |
+| Update check interval | - | - | `UPDATE_CHECK_INTERVAL=3600000` |
 
 Run `cc-web --help` for all options.
 
@@ -102,6 +104,7 @@ Run `cc-web --help` for all options.
 - **Permission Modes** - Configure Claude's access: Default, Plan, Bypass, Skip
 - **Multi-tab Support** - Session warnings, per-tab isolation
 - **Authentication** - Password protection with session tokens (default enabled)
+- **Auto-Update** - Version checking with one-click upgrade for npm installs
 
 ### Keyboard Shortcuts
 
