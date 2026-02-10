@@ -337,7 +337,11 @@ function saveChatInput() {
       localStorage.setItem(chatInputStorageKey.value, inputValue.value);
       // Clear backup when user starts typing new content (only if there's actual text being typed)
       // This ensures backup persists when input is cleared via the clear button
-      if (chatInputBackupKey.value && hasBackup.value && inputValue.value.trim() !== '') {
+      if (
+        chatInputBackupKey.value &&
+        hasBackup.value &&
+        inputValue.value.trim() !== ''
+      ) {
         localStorage.removeItem(chatInputBackupKey.value);
         hasBackupState.value = false;
       }
@@ -1111,6 +1115,46 @@ function handleCreateFolder() {
   fileModals.value.createFolder = true;
 }
 
+function handleReference(item) {
+  const reference = `@${item.path}`;
+  const currentContent = inputValue.value;
+
+  // Check if we need to add a space before the reference
+  let needsSpace = false;
+  if (currentContent.length > 0) {
+    const lastChar = currentContent[currentContent.length - 1];
+    // Add space if the last character is not a whitespace or newline
+    needsSpace = lastChar !== ' ' && lastChar !== '\n' && lastChar !== '\t';
+  }
+
+  // Append the reference
+  const newContent = currentContent + (needsSpace ? ' ' : '') + reference;
+  inputValue.value = newContent;
+
+  // Save to localStorage first
+  saveChatInput();
+
+  // Switch to chat mode (will reinitialize editor with saved content)
+  currentMode.value = 'chat';
+
+  // Focus the editor after it's ready
+  nextTick(() => {
+    nextTick(() => {
+      const editable = editorEl.value?.querySelector('[contenteditable]');
+      if (editable) {
+        editable.focus();
+        // Move cursor to end
+        const range = document.createRange();
+        const sel = window.getSelection();
+        range.selectNodeContents(editable);
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    });
+  });
+}
+
 function handleRename(item) {
   fileModals.value.rename = item;
   fileModals.value.renameNewName = item.name; // Pre-fill with current name
@@ -1475,6 +1519,7 @@ watch(openedFile, (file) => {
         :loading="filesLoading"
         @navigate="handleFilesNavigate"
         @select-file="handleFileSelect"
+        @reference="handleReference"
         @rename="handleRename"
         @delete="handleDelete"
       />

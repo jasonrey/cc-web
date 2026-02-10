@@ -7,7 +7,13 @@ const props = defineProps({
   loading: Boolean,
 });
 
-const emit = defineEmits(['navigate', 'select-file', 'rename', 'delete']);
+const emit = defineEmits([
+  'navigate',
+  'select-file',
+  'rename',
+  'delete',
+  'reference',
+]);
 
 const contextMenu = ref({
   visible: false,
@@ -53,6 +59,9 @@ function handleContextAction(action) {
   closeContextMenu();
 
   switch (action) {
+    case 'reference':
+      emit('reference', item);
+      break;
     case 'rename':
       emit('rename', item);
       break;
@@ -117,6 +126,13 @@ onUnmounted(() => {
         class="context-menu"
         :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }"
       >
+        <button v-if="!contextMenu.item?.isDirectory" class="context-menu-item" @click="handleContextAction('reference')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+          </svg>
+          Reference
+        </button>
         <button class="context-menu-item" @click="handleContextAction('rename')">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
