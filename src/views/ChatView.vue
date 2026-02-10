@@ -2925,8 +2925,7 @@ watch(openedFile, (file) => {
   display: flex;
   align-items: center;
   align-self: flex-start;
-  padding-top: 10px;
-  margin-left: -2px; /* Align with form padding */
+  padding-top: 8px;
 }
 
 .input-form.permission-plan .chat-prompt {
