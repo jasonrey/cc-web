@@ -2,6 +2,35 @@
 
 All notable changes to cc-web (Claude Code Web).
 
+## 2026-02-10 - Enhanced CLI & Configuration System
+
+### CLI Enhancements
+- **Daemon Lifecycle Management**: `--stop`, `--restart`, `--status` commands for daemon control
+- **Configuration File Support**: Load settings from JSON file via `--config` flag
+- **Debug Mode**: `--debug` flag enables verbose logging with timestamps
+- **Quiet Mode**: `--quiet` flag suppresses non-error output
+- **Custom Log File**: `--log-file` to specify custom log location
+- **Custom PID File**: `--pid-file` to specify custom PID file location
+- **PID File Management**: Auto-creates `~/.cc-web/` directory, writes PID for daemon tracking
+- **Graceful Shutdown**: Daemon stop with SIGTERM, force kill after timeout
+- **Smart Restart**: Preserves CLI arguments when restarting daemon
+
+### Configuration System
+- **Priority Order**: CLI args > Config file > Environment variables > Defaults
+- **Cross-Support**: All options available via CLI, config file, or environment variables
+- **Config File Template**: Added `config.example.json` with all available options
+- **Environment Variables**: Added `LOG_FILE` and `PID_FILE` env var support
+- **Development vs Production**: Clarified `.env` is for development only, not distribution
+
+### Bug Fixes
+- **Copy Button Fix**: DOMPurify now allows `onclick` attributes for code block copy buttons
+
+### Documentation
+- **Configuration Reference Table**: Complete mapping of CLI args ↔ Config file ↔ Env vars
+- **Enhanced README**: Comprehensive CLI usage guide with examples
+- **Updated .env.example**: Clear section headers and usage notes
+- **Development Clarity**: Documented that `.env` is only for local development
+
 ## 2026-02-08 - Security Hardening, Performance Optimizations & QOL Improvements
 
 ### Security Fixes (High Priority)

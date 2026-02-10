@@ -131,5 +131,8 @@ marked.use({ renderer });
 export function renderMarkdown(text) {
   if (!text) return '';
   const html = marked.parse(text);
-  return DOMPurify.sanitize(html);
+  // Allow onclick for copy buttons (we control the content - it's our own generated code)
+  return DOMPurify.sanitize(html, {
+    ADD_ATTR: ['onclick', 'data-code-id'],
+  });
 }

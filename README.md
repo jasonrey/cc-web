@@ -49,40 +49,46 @@ On first run:
 
 ## Usage
 
-### Command Line Options
-
 ```bash
-# Custom port
-npx cc-web --port 8080
+# Start server
+cc-web
 
-# Bind to specific host
-npx cc-web --host 127.0.0.1
+# Custom port and host
+cc-web -p 8080 -h 127.0.0.1
 
-# Disable authentication (local/trusted networks only)
-npx cc-web --no-auth
+# Run as daemon
+cc-web -d
+
+# Stop/restart/status
+cc-web --stop
+cc-web --restart
+cc-web --status
+
+# Use config file
+cc-web --config prod.json
+
+# See all options
+cc-web --help
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `-p, --port <port>` | Port to listen on | 3000 |
-| `-h, --host <host>` | Host to bind to | 0.0.0.0 |
-| `--no-auth` | Disable password authentication | false |
+### Configuration
 
-### Environment Variables
+**Three ways to configure (priority order):**
 
-```bash
-PORT=8080 npx cc-web
-HOST=127.0.0.1 npx cc-web
-AUTH_DISABLED=true npx cc-web
-DEBUG=true npx cc-web  # Enable debug logging to cc-web.log
-```
+1. **CLI arguments:** `cc-web -p 8080 --debug`
+2. **Config file:** `cc-web --config prod.json` (see `config.example.json`)
+3. **Environment variables:** `PORT=8080 DEBUG=true cc-web`
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `PORT` | Server port | 3000 |
-| `HOST` | Host to bind to | 0.0.0.0 |
-| `AUTH_DISABLED` | Disable authentication | false |
-| `DEBUG` | Enable debug logging to `cc-web.log` with timestamps | false |
+| Setting | CLI | Config | Env Var |
+|---------|-----|--------|---------|
+| Port | `-p 3000` | `"port": 3000` | `PORT=3000` |
+| Host | `-h 0.0.0.0` | `"host": "0.0.0.0"` | `HOST=0.0.0.0` |
+| No auth | `--no-auth` | `"auth": false` | `AUTH_DISABLED=true` |
+| Daemon | `-d` | `"daemon": true` | - |
+| Debug | `--debug` | `"debug": true` | `DEBUG=true` |
+| Log file | `--log-file <path>` | `"logFile": "<path>"` | `LOG_FILE=<path>` |
+
+Run `cc-web --help` for all options.
 
 ---
 

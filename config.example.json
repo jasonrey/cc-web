@@ -1,0 +1,10 @@
+{
+  "port": 3000,
+  "host": "0.0.0.0",
+  "auth": true,
+  "debug": false,
+  "daemon": false,
+  "quiet": false,
+  "logFile": null,
+  "pidFile": null
+}
