@@ -462,7 +462,13 @@ export function useChatWebSocket() {
           sessionActiveElsewhere.value = msg.isActiveElsewhere || false;
           // Don't clear messages here - selectSession() already did it
           // Clearing again creates a race window for cross-session messages
-          // Don't set contextReady yet - wait for session_history to load first
+          // For brand new sessions with no history, set contextReady immediately
+          // For existing sessions, wait for session_history to load
+          if (msg.hasHistory === false) {
+            // Brand new session with no history - ready immediately
+            contextReady.value = true;
+          }
+          // Otherwise, don't set contextReady yet - wait for session_history to load first
         } else if (msg.sessionId === null && currentSession.value === null) {
           // Both null - new session flow - no history to wait for
           contextReady.value = true;
@@ -486,7 +492,7 @@ export function useChatWebSocket() {
       case 'session_history':
         // Only accept history if it matches current session (prevents race condition)
         if (!msg.sessionId || msg.sessionId === currentSession.value) {
-          messages.value = msg.messages;
+          messages.value = msg.messages || [];
           hasOlderMessages.value = msg.hasOlderMessages || false;
           summaryCount.value = msg.summaryCount || 0;
           // History loaded - NOW context is fully ready
@@ -509,6 +515,8 @@ export function useChatWebSocket() {
 
       case 'session_info':
         currentSession.value = msg.sessionId;
+        // New session is now created and ready for interaction
+        contextReady.value = true;
         break;
 
       case 'project_status':

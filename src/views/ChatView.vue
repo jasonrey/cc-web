@@ -343,6 +343,53 @@ function clearChatInput() {
   }
 }
 
+// Check if there's a backup available for undo
+const hasBackup = computed(() => {
+  if (!chatInputBackupKey.value) return false;
+  const backup = localStorage.getItem(chatInputBackupKey.value);
+  return backup !== null && backup !== '';
+});
+
+// Clear current input and save it as backup
+function handleClearInput() {
+  const current = inputValue.value.trim();
+  if (!current) return;
+
+  // Save current input as backup
+  if (chatInputBackupKey.value) {
+    localStorage.setItem(chatInputBackupKey.value, current);
+  }
+
+  // Clear current input
+  inputValue.value = '';
+  if (editorInstance.value) {
+    editorInstance.value.setContent('');
+  }
+
+  // Clear storage
+  clearChatInput();
+}
+
+// Restore input from backup
+function handleUndoClear() {
+  if (!chatInputBackupKey.value) return;
+
+  const backup = localStorage.getItem(chatInputBackupKey.value);
+  if (!backup) return;
+
+  // Restore the backup
+  inputValue.value = backup;
+  if (editorInstance.value) {
+    editorInstance.value.setContent(backup);
+  }
+
+  // Save to current storage
+  saveChatInput();
+
+  // Clear the backup
+  localStorage.removeItem(chatInputBackupKey.value);
+}
+
 // Focus the chat input editor when clicking on the form area
 function focusChatInput(event) {
   // Don't interfere with button clicks
@@ -413,6 +460,14 @@ const permissionStorageKey = computed(() => {
 const chatInputStorageKey = computed(() => {
   if (projectSlug.value && sessionParam.value && sessionParam.value !== 'new') {
     return `chat-input:${projectSlug.value}:${sessionParam.value}`;
+  }
+  return null;
+});
+
+// Storage key for backup chat input (for undo after clear)
+const chatInputBackupKey = computed(() => {
+  if (projectSlug.value && sessionParam.value && sessionParam.value !== 'new') {
+    return `chat-input-backup:${projectSlug.value}:${sessionParam.value}`;
   }
   return null;
 });
@@ -1592,6 +1647,31 @@ watch(openedFile, (file) => {
           class="input tinyMDE"
           :style="{ maxHeight: textareaMaxHeight + 'px' }"
         ></div>
+        <!-- Clear/Undo button (top-right) -->
+        <button
+          v-if="hasBackup"
+          type="button"
+          class="clear-undo-btn undo"
+          @click.stop="handleUndoClear"
+          title="Undo clear"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 7v6h6"/>
+            <path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"/>
+          </svg>
+        </button>
+        <button
+          v-else-if="inputValue.trim()"
+          type="button"
+          class="clear-undo-btn clear"
+          @click.stop="handleClearInput"
+          title="Clear input"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
         <!-- Reconnecting overlay -->
         <span v-if="!contextReady" class="reconnecting-indicator" title="Reconnecting to server...">
           <svg class="spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -2836,6 +2916,37 @@ watch(openedFile, (file) => {
 
 .send-btn:not(:disabled):hover {
   color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+/* Clear/Undo button (top-right of input) */
+.clear-undo-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  background: var(--bg-primary);
+  transition: all 0.15s;
+  z-index: 10;
+}
+
+.clear-undo-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.clear-undo-btn.undo {
+  color: var(--success-color);
+}
+
+.clear-undo-btn.undo:hover {
+  color: var(--success-color);
   background: var(--bg-hover);
 }
 

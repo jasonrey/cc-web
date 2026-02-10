@@ -386,12 +386,22 @@ async function handleRestart() {
     newArgs.push('--daemon');
   }
 
-  // Spawn new instance
+  // Spawn new CLI instance (not detached) so we can see startup errors
+  // The new CLI will handle daemon spawning with proper detachment
   const cliPath = fileURLToPath(import.meta.url);
-  spawn('node', [cliPath, ...newArgs], {
-    detached: true,
+  const child = spawn('node', [cliPath, ...newArgs], {
     stdio: 'inherit',
-  }).unref();
+  });
+
+  // Wait for new CLI to exit (it will exit after spawning daemon)
+  child.on('exit', (code) => {
+    if (code === 0) {
+      console.log('Restart completed successfully');
+    } else {
+      console.error(`Restart failed with exit code ${code}`);
+    }
+    process.exit(code || 0);
+  });
 }
 
 async function handleStatus() {
