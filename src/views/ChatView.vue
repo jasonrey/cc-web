@@ -120,6 +120,23 @@ function closeGitDiffModal() {
   showGitDiffModal.value = false;
 }
 
+// Mobile terminal subtab selector
+const showMobileTerminalSelector = ref(false);
+
+function handleTerminalTabClick() {
+  // On mobile (<=768px), show selector modal instead of switching mode
+  if (window.innerWidth <= 768 && currentMode.value === 'terminal') {
+    showMobileTerminalSelector.value = true;
+  } else {
+    currentMode.value = 'terminal';
+  }
+}
+
+function selectMobileTerminalTab(tab) {
+  terminalSubTab.value = tab;
+  showMobileTerminalSelector.value = false;
+}
+
 // Flag to prevent auto-save during session transitions
 let isLoadingSession = false;
 
@@ -1847,7 +1864,7 @@ watch(openedFile, (file) => {
           <button
             class="mode-tab"
             :class="{ active: currentMode === 'terminal' }"
-            @click="currentMode = 'terminal'"
+            @click="handleTerminalTabClick"
             title="Terminal mode"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1857,7 +1874,7 @@ watch(openedFile, (file) => {
             Terminal
             <span class="mode-badge" v-if="runningProcessCount > 0">{{ runningProcessCount }}</span>
 
-            <!-- Terminal subtabs (inline, only shown when terminal mode active) -->
+            <!-- Terminal subtabs (inline, only shown when terminal mode active on desktop) -->
             <div v-if="currentMode === 'terminal'" class="terminal-subtabs" @click.stop>
               <button
                 class="terminal-subtab"
@@ -2011,6 +2028,42 @@ watch(openedFile, (file) => {
       :project-path="projectStatus.cwd"
       @close="closeGitDiffModal"
     />
+
+    <!-- Mobile Terminal Selector Modal -->
+    <Teleport to="body">
+      <div v-if="showMobileTerminalSelector" class="mobile-terminal-selector-overlay" @click="showMobileTerminalSelector = false">
+        <div class="mobile-terminal-selector" @click.stop>
+          <button
+            class="mobile-terminal-option"
+            :class="{ active: terminalSubTab === 'active' }"
+            @click="selectMobileTerminalTab('active')"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="4 17 10 11 4 5"/>
+              <line x1="12" y1="19" x2="20" y2="19"/>
+            </svg>
+            <div>
+              <div class="option-title">Active</div>
+              <div class="option-desc">Running processes</div>
+            </div>
+          </button>
+          <button
+            class="mobile-terminal-option"
+            :class="{ active: terminalSubTab === 'history' }"
+            @click="selectMobileTerminalTab('history')"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 3v18h18"/>
+              <path d="M7 12l4-4 4 4 4-4"/>
+            </svg>
+            <div>
+              <div class="option-title">History</div>
+              <div class="option-desc">Command history</div>
+            </div>
+          </button>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -3422,5 +3475,126 @@ watch(openedFile, (file) => {
 
 .modal-btn.danger:hover {
   opacity: 0.9;
+}
+
+/* Mobile terminal selector modal */
+.mobile-terminal-selector-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.mobile-terminal-selector {
+  width: 100%;
+  background: var(--bg-primary);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.mobile-terminal-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: var(--bg-secondary);
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.mobile-terminal-option:active {
+  background: var(--bg-tertiary);
+}
+
+.mobile-terminal-option.active {
+  border-color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+.mobile-terminal-option svg {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.mobile-terminal-option.active svg {
+  color: var(--text-primary);
+}
+
+.option-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.option-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Mobile styles */
+@media (max-width: 768px) {
+  /* Toolbar - swap order so git/status is above model/permission selectors */
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .toolbar-left {
+    order: 1; /* Git branch at top */
+  }
+
+  .toolbar-right {
+    order: 2; /* Model/permission selectors below */
+    justify-content: flex-start;
+  }
+
+  /* Hide clear button in terminal mode on mobile - not enough space */
+  .toolbar .clear-terminal-btn {
+    display: none;
+  }
+
+  /* Mode tabs - hide terminal subtabs on mobile */
+  .mode-tabs {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .terminal-subtabs {
+    display: none; /* Hide Active/History inline tabs */
+  }
+
+  /* Show mode badge on terminal tab for mobile */
+  .mode-tab {
+    position: relative;
+  }
 }
 </style>
