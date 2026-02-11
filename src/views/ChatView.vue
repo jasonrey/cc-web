@@ -1856,6 +1856,26 @@ watch(openedFile, (file) => {
             </svg>
             Terminal
             <span class="mode-badge" v-if="runningProcessCount > 0">{{ runningProcessCount }}</span>
+
+            <!-- Terminal subtabs (inline, only shown when terminal mode active) -->
+            <div v-if="currentMode === 'terminal'" class="terminal-subtabs" @click.stop>
+              <button
+                class="terminal-subtab"
+                :class="{ active: terminalSubTab === 'active' }"
+                @click="terminalSubTab = 'active'"
+                title="Active processes"
+              >
+                Active
+              </button>
+              <button
+                class="terminal-subtab"
+                :class="{ active: terminalSubTab === 'history' }"
+                @click="terminalSubTab = 'history'"
+                title="Command history"
+              >
+                History
+              </button>
+            </div>
           </button>
           <button
             class="mode-tab"
@@ -1868,26 +1888,6 @@ watch(openedFile, (file) => {
               <polyline points="13 2 13 9 20 9"/>
             </svg>
             Files
-          </button>
-        </div>
-
-        <!-- Terminal subtabs (only shown in terminal mode) -->
-        <div v-if="currentMode === 'terminal'" class="terminal-subtabs">
-          <button
-            class="terminal-subtab"
-            :class="{ active: terminalSubTab === 'active' }"
-            @click="terminalSubTab = 'active'"
-            title="Active processes"
-          >
-            Active
-          </button>
-          <button
-            class="terminal-subtab"
-            :class="{ active: terminalSubTab === 'history' }"
-            @click="terminalSubTab = 'history'"
-            title="Command history"
-          >
-            History
           </button>
         </div>
 
@@ -2467,6 +2467,30 @@ watch(openedFile, (file) => {
   gap: 8px;
 }
 
+.toolbar .action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.toolbar .action-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.toolbar .action-btn svg {
+  flex-shrink: 0;
+}
+
 .toolbar-item {
   display: flex;
   align-items: center;
@@ -2668,20 +2692,19 @@ watch(openedFile, (file) => {
 
 .terminal-subtabs {
   display: flex;
-  gap: 2px;
-  padding: 2px;
-  background: var(--bg-secondary);
-  border-radius: var(--radius-sm);
+  gap: 4px;
+  margin-left: 6px;
+  padding-left: 6px;
+  border-left: 1px solid var(--border-color);
 }
 
 .terminal-subtab {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
+  padding: 2px 8px;
   font-size: 11px;
   font-weight: 500;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   background: transparent;
   border: none;
   border-radius: var(--radius-sm);
@@ -2691,11 +2714,11 @@ watch(openedFile, (file) => {
 
 .terminal-subtab:hover {
   background: var(--bg-hover);
-  color: var(--text-primary);
+  color: var(--text-secondary);
 }
 
 .terminal-subtab.active {
-  background: var(--bg-tertiary);
+  background: var(--bg-secondary);
   color: var(--text-primary);
 }
 

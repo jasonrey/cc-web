@@ -185,19 +185,44 @@ async function copyOutput(proc, e) {
 
     <!-- History Tab Content -->
     <div class="tab-content" v-if="activeTab === 'history'" ref="historyContentRef">
-      <div v-if="allProcesses.length > 0" class="process-list">
+      <div v-if="allProcesses.length > 0" class="process-list history">
         <div
           v-for="proc in allProcesses"
           :key="proc.id"
           class="terminal-block"
           :class="{ running: proc.status === 'running', expanded: isExpanded(proc.id) }"
         >
-          <div class="terminal-header" @click="proc.status !== 'running' && toggleExpand(proc.id)">
+          <!-- Floating action buttons -->
+          <div class="floating-actions" v-if="proc.status !== 'running'">
+            <button
+              class="replay-btn"
+              @click.stop="$emit('replay', proc.command, proc.cwd)"
+              title="Run this command again"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 4 23 10 17 10"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+            </button>
+            <button
+              class="expand-btn"
+              @click="toggleExpand(proc.id)"
+              :title="isExpanded(proc.id) ? 'Collapse' : 'Expand'"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline :points="isExpanded(proc.id) ? '18 15 12 9 6 15' : '6 9 12 15 18 9'"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Command line -->
+          <div class="command-line" @click="proc.status !== 'running' && toggleExpand(proc.id)">
             <span class="terminal-status" :class="proc.status">
               <span v-if="proc.status === 'running'" class="spinner"></span>
               <template v-else>{{ getStatusIcon(proc.status) }}</template>
             </span>
-            <span class="terminal-command">$ {{ proc.command }}</span>
+            <span class="prompt">$</span>
+            <span class="command-text">{{ proc.command }}</span>
             <span class="terminal-meta">
               <template v-if="proc.status === 'running'">
                 <span class="terminal-cwd">{{ formatCwd(proc.cwd) }}</span>
@@ -210,17 +235,6 @@ async function copyOutput(proc, e) {
                 <span class="terminal-duration">{{ formatDuration(proc.startedAt, proc.endedAt) }}</span>
               </template>
             </span>
-            <button
-              v-if="proc.status !== 'running'"
-              class="replay-btn"
-              @click.stop="$emit('replay', proc.command, proc.cwd)"
-              title="Run this command again"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="23 4 23 10 17 10"/>
-                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-              </svg>
-            </button>
             <button
               v-if="proc.output.length > 0 && (proc.status === 'running' || isExpanded(proc.id))"
               class="copy-btn"
@@ -238,8 +252,9 @@ async function copyOutput(proc, e) {
             >
               Kill
             </button>
-            <span v-else class="expand-icon">{{ isExpanded(proc.id) ? '▼' : '▶' }}</span>
           </div>
+
+          <!-- Output -->
           <pre v-if="proc.status === 'running' || isExpanded(proc.id)" class="terminal-pre" v-html="getOutputHtml(proc)"></pre>
         </div>
       </div>
@@ -272,32 +287,115 @@ async function copyOutput(proc, e) {
   padding: 16px;
 }
 
-.terminal-block {
+/* Active tab - keep boxed style */
+.process-list:not(.history) .terminal-block {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   overflow: hidden;
 }
 
-.terminal-block.running {
+.process-list:not(.history) .terminal-block.running {
   border-color: var(--warning-color);
   border-left-width: 3px;
 }
 
-.terminal-block:not(.running) {
-  cursor: pointer;
-}
-
-.terminal-block:not(.running):hover {
-  background: var(--bg-hover);
-}
-
-.terminal-header {
+.process-list:not(.history) .terminal-header {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
   background: var(--bg-tertiary);
+}
+
+/* History tab - flat terminal style */
+.process-list.history {
+  gap: 0;
+  padding: 16px;
+}
+
+.process-list.history .terminal-block {
+  position: relative;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 8px 0;
+  border-bottom: 1px solid transparent;
+}
+
+.process-list.history .terminal-block:hover {
+  background: transparent;
+  border-bottom-color: var(--border-color);
+}
+
+.process-list.history .terminal-block.running {
+  border-left: none;
+  background: rgba(251, 146, 60, 0.05);
+  padding-left: 12px;
+  margin-left: -12px;
+  padding-right: 12px;
+  margin-right: -12px;
+  border-radius: var(--radius-sm);
+}
+
+.floating-actions {
+  position: absolute;
+  top: 8px;
+  right: 0;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.terminal-block:hover .floating-actions {
+  opacity: 1;
+}
+
+.floating-actions .replay-btn,
+.floating-actions .expand-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.floating-actions .replay-btn:hover,
+.floating-actions .expand-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+  border-color: var(--text-muted);
+}
+
+.command-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  cursor: pointer;
+  line-height: 1.6;
+}
+
+.command-line .prompt {
+  color: var(--text-muted);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.command-line .command-text {
+  flex: 1;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .terminal-status {
@@ -337,7 +435,8 @@ async function copyOutput(proc, e) {
   }
 }
 
-.terminal-command {
+/* Active tab command styling */
+.process-list:not(.history) .terminal-command {
   flex: 1;
   font-weight: 500;
   color: var(--text-primary);
@@ -381,13 +480,8 @@ async function copyOutput(proc, e) {
   color: var(--text-muted);
 }
 
-.expand-icon {
-  flex-shrink: 0;
-  color: var(--text-muted);
-  font-size: 10px;
-}
-
-.replay-btn {
+/* Active tab replay button (inline) */
+.process-list:not(.history) .replay-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -400,7 +494,7 @@ async function copyOutput(proc, e) {
   transition: background 0.15s, color 0.15s;
 }
 
-.replay-btn:hover {
+.process-list:not(.history) .replay-btn:hover {
   color: var(--text-primary);
   background: var(--bg-hover);
 }
@@ -439,7 +533,8 @@ async function copyOutput(proc, e) {
   background: rgba(34, 197, 94, 0.1);
 }
 
-.terminal-pre {
+/* Active tab terminal output */
+.process-list:not(.history) .terminal-pre {
   margin: 0;
   padding: 12px;
   max-height: 300px;
@@ -450,8 +545,26 @@ async function copyOutput(proc, e) {
   line-height: 1.5;
 }
 
-.terminal-block.running .terminal-pre {
+.process-list:not(.history) .terminal-block.running .terminal-pre {
   max-height: 400px;
+}
+
+/* History tab terminal output - flat style */
+.process-list.history .terminal-pre {
+  margin: 0;
+  padding: 8px 0 8px 24px; /* Indent to align with command */
+  max-height: 300px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  background: transparent;
+}
+
+.process-list.history .terminal-block.running .terminal-pre {
+  max-height: 400px;
+  padding-left: 24px;
 }
 
 .stream-stdout {
