@@ -27,6 +27,23 @@ const emit = defineEmits([
 
 const historyContentRef = ref(null);
 
+// Local expanded state - new processes start expanded
+const localExpandedState = ref(new Map());
+
+// Initialize expanded state for new processes
+watch(
+  () => props.processes,
+  (newProcesses) => {
+    for (const proc of newProcesses) {
+      // Only set if not already tracked and not running
+      if (!localExpandedState.value.has(proc.id) && proc.status !== 'running') {
+        localExpandedState.value.set(proc.id, true); // Expanded by default
+      }
+    }
+  },
+  { immediate: true, deep: true }
+);
+
 // Running processes only (for Active tab)
 const runningProcesses = computed(() =>
   props.processes.filter((p) => p.status === 'running'),
@@ -96,11 +113,12 @@ function getStatusIcon(status) {
 }
 
 function isExpanded(processId) {
-  return props.expandedHistory.has(processId);
+  return localExpandedState.value.get(processId) ?? false;
 }
 
 function toggleExpand(processId) {
-  emit('toggle-expand', processId);
+  const current = localExpandedState.value.get(processId) ?? false;
+  localExpandedState.value.set(processId, !current);
 }
 
 function setTab(tab) {
@@ -202,15 +220,6 @@ async function copyOutput(proc, e) {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="23 4 23 10 17 10"/>
                 <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-              </svg>
-            </button>
-            <button
-              class="expand-btn"
-              @click="toggleExpand(proc.id)"
-              :title="isExpanded(proc.id) ? 'Collapse' : 'Expand'"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline :points="isExpanded(proc.id) ? '18 15 12 9 6 15' : '6 9 12 15 18 9'"/>
               </svg>
             </button>
           </div>
@@ -320,12 +329,7 @@ async function copyOutput(proc, e) {
   border: none;
   border-radius: 0;
   padding: 8px 0;
-  border-bottom: 1px solid transparent;
-}
-
-.process-list.history .terminal-block:hover {
-  background: transparent;
-  border-bottom-color: var(--border-color);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .process-list.history .terminal-block.running {
@@ -352,8 +356,7 @@ async function copyOutput(proc, e) {
   opacity: 1;
 }
 
-.floating-actions .replay-btn,
-.floating-actions .expand-btn {
+.floating-actions .replay-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -367,8 +370,7 @@ async function copyOutput(proc, e) {
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
-.floating-actions .replay-btn:hover,
-.floating-actions .expand-btn:hover {
+.floating-actions .replay-btn:hover {
   color: var(--text-primary);
   background: var(--bg-hover);
   border-color: var(--text-muted);
@@ -553,8 +555,8 @@ async function copyOutput(proc, e) {
 .process-list.history .terminal-pre {
   margin: 0;
   padding: 8px 0 8px 24px; /* Indent to align with command */
-  max-height: 300px;
-  overflow-y: auto;
+  max-height: none; /* No height limit - fully expanded */
+  overflow-y: visible; /* No scroll */
   white-space: pre-wrap;
   word-break: break-all;
   color: var(--text-secondary);
@@ -563,7 +565,7 @@ async function copyOutput(proc, e) {
 }
 
 .process-list.history .terminal-block.running .terminal-pre {
-  max-height: 400px;
+  max-height: none;
   padding-left: 24px;
 }
 
