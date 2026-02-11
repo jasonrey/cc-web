@@ -121,9 +121,11 @@ async function executePrompt(ws, projectSlug, sessionId, prompt, options = {}) {
     ...(Object.keys(mcpServers).length > 0 && { mcpServers }),
   };
 
-  // Set model if specified (sonnet, opus, haiku, opusplan)
+  // Set model if specified (sonnet, opus, haiku)
+  // Override opus to use 4.6 explicitly (SDK defaults to 4.1)
   if (options.model) {
-    queryOptions.model = options.model;
+    queryOptions.model =
+      options.model === 'opus' ? 'claude-opus-4-6' : options.model;
   }
 
   if (taskSessionId) {

@@ -229,6 +229,14 @@ app.post('/api/auth/logout', (req, res) => {
 });
 
 // ============================================
+// Serve docs folder (no auth required)
+// ============================================
+const docsPath = join(rootDir, 'docs');
+if (existsSync(docsPath)) {
+  app.use('/docs', express.static(docsPath));
+}
+
+// ============================================
 // Serve Vue build with auth protection
 // ============================================
 const distPath = join(rootDir, 'dist');
@@ -240,7 +248,8 @@ if (existsSync(distPath)) {
     if (
       req.method === 'GET' &&
       !req.path.startsWith('/api') &&
-      !req.path.startsWith('/ws')
+      !req.path.startsWith('/ws') &&
+      !req.path.startsWith('/docs')
     ) {
       res.sendFile(join(distPath, 'index.html'));
     } else {

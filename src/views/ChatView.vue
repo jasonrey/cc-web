@@ -470,8 +470,6 @@ const editorEl = ref(null); // TinyMDE container
 const editorInstance = ref(null); // TinyMDE instance
 const permissionMode = ref('default');
 const modelSelection = ref('sonnet'); // 'sonnet' | 'opus' | 'haiku'
-const textareaMaxHeight = ref(200); // Default max height, can be adjusted by resize handle
-const isResizing = ref(false);
 
 const projectSlug = computed(() => route.params.project);
 const sessionParam = computed(() => route.params.session);
@@ -706,54 +704,6 @@ function scrollToBottom() {
   chatMessagesRef.value?.scrollToBottom();
 }
 
-function autoResize() {
-  const textarea = textareaEl.value;
-  if (textarea && !isResizing.value) {
-    textarea.style.height = 'auto';
-    textarea.style.height = `${Math.min(textarea.scrollHeight, textareaMaxHeight.value)}px`;
-  }
-}
-
-// Resize handle drag functionality
-function startResize(e) {
-  e.preventDefault();
-  isResizing.value = true;
-  const startY = e.clientY || e.touches?.[0]?.clientY;
-  const textarea = terminalMode.value
-    ? terminalInputRef.value
-    : textareaEl.value;
-  const startHeight = textarea
-    ? textarea.offsetHeight
-    : textareaMaxHeight.value;
-
-  function onMove(moveEvent) {
-    const currentY = moveEvent.clientY || moveEvent.touches?.[0]?.clientY;
-    const delta = startY - currentY;
-    const newHeight = Math.max(60, Math.min(400, startHeight + delta));
-    textareaMaxHeight.value = newHeight;
-    if (textarea) {
-      textarea.style.height = `${newHeight}px`;
-    }
-  }
-
-  function onEnd() {
-    isResizing.value = false;
-    document.removeEventListener('mousemove', onMove);
-    document.removeEventListener('mouseup', onEnd);
-    document.removeEventListener('touchmove', onMove);
-    document.removeEventListener('touchend', onEnd);
-  }
-
-  document.addEventListener('mousemove', onMove);
-  document.addEventListener('mouseup', onEnd);
-  document.addEventListener('touchmove', onMove);
-  document.addEventListener('touchend', onEnd);
-}
-
-// Watch input value to auto-resize
-watch(inputValue, () => {
-  nextTick(autoResize);
-});
 
 // Note: Auto-scroll on messages and isRunning are now handled by ChatMessages component
 
@@ -1694,16 +1644,6 @@ watch(openedFile, (file) => {
         </div>
       </div>
 
-      <!-- Resize handle -->
-      <div
-        class="resize-handle"
-        :class="{ resizing: isResizing }"
-        @mousedown="startResize"
-        @touchstart.prevent="startResize"
-      >
-        <div class="resize-handle-bar"></div>
-      </div>
-
       <!-- Chat input -->
       <form v-if="currentMode === 'chat'" class="input-form" :class="['permission-' + permissionMode, { 'reconnecting': !contextReady }]" @submit.prevent="handleSubmit" @click="focusChatInput">
         <span class="chat-prompt">
@@ -1771,7 +1711,6 @@ watch(openedFile, (file) => {
             class="terminal-input"
             placeholder="Enter command... (Enter to run, \ for multiline)"
             rows="1"
-            :style="{ maxHeight: textareaMaxHeight + 'px' }"
             @keydown="handleTerminalKeydown"
             @keydown.ctrl.enter.prevent="handleTerminalSubmit"
             @keydown.meta.enter.prevent="handleTerminalSubmit"
@@ -2627,29 +2566,6 @@ watch(openedFile, (file) => {
 .permission-tab.skip.active {
   color: #f97316;
   background: rgba(249, 115, 22, 0.15);
-}
-
-/* Resize handle */
-.resize-handle {
-  display: flex;
-  justify-content: center;
-  padding: 6px 0;
-  cursor: ns-resize;
-  user-select: none;
-  touch-action: none;
-}
-
-.resize-handle-bar {
-  width: 40px;
-  height: 4px;
-  background: var(--border-color);
-  border-radius: 2px;
-  transition: background 0.15s;
-}
-
-.resize-handle:hover .resize-handle-bar,
-.resize-handle.resizing .resize-handle-bar {
-  background: var(--text-muted);
 }
 
 /* Mode tabs (Chat/Terminal toggle) */
