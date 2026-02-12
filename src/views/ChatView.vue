@@ -3458,6 +3458,8 @@ watch(openedFile, (file) => {
   .toolbar-right {
     order: 2; /* Model/permission selectors below */
     justify-content: flex-start;
+    flex-wrap: nowrap; /* Prevent wrapping */
+    overflow-x: auto; /* Allow horizontal scroll if needed */
   }
 
   /* Mode tabs - keep single line on mobile */
