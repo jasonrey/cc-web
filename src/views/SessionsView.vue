@@ -357,19 +357,13 @@ function handleDeleteSession(sessionId, event) {
 }
 
 .delete-session-btn {
-  opacity: 0;
   margin: 0 8px;
   padding: 8px;
   border-radius: var(--radius-sm);
   color: var(--text-muted);
-  background: var(--bg-primary);
-  transition: opacity 0.15s, background 0.15s, color 0.15s;
+  background: transparent;
+  transition: background 0.15s, color 0.15s;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.session-item:hover .delete-session-btn {
-  opacity: 1;
 }
 
 .delete-session-btn:hover {
