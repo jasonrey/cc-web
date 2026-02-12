@@ -1,5 +1,7 @@
 # ENHANCEMENT: JSONL Streaming Optimization
 
+**Status**: ✅ **COMPLETED** (Phase 1 + Phase 2 implemented - 2026-02-12)
+
 ## Context
 
 Currently, conversation history loading uses Node.js streaming APIs (`createReadStream` + `readline.createInterface`) to read JSONL files line-by-line, but still accumulates all entries in memory before processing. This defeats the primary advantage of JSONL format for large conversation histories.
@@ -202,6 +204,66 @@ rl.on('line', (line) => {
 - `server/lib/sessions.js` - Main implementation
 - `server/events/get-recent-sessions.js` - Session list event
 - `server/lib/session-titles.js` - Title management
+
+## Implementation Summary
+
+### Phase 1 (✅ Completed - 2026-02-12)
+**Commit**: `3590e97` - "Optimize JSONL session list scanning (Phase 1)"
+
+- Replaced `readFileSync` with streaming `readline` for unindexed sessions
+- Made `getSessionsList()` async
+- Reduced memory usage during session list loading
+- No longer loads entire JSONL files just to read first line
+
+**Files changed**:
+- `server/lib/sessions.js` - Converted to streaming approach
+- `server/events/get-sessions.js` - Made handler async
+- `server/events/select-project.js` - Made handler async
+
+### Phase 2 (✅ Completed - 2026-02-12)
+**Commit**: `b5fed9b` - "Implement JSONL streaming optimization Phase 2 - Pagination"
+
+**Backend**:
+- Circular buffer in `loadSessionHistory()` (max 500 entries by default, configurable)
+- Pagination support via `offset` and `limit` parameters
+- New `load_older_messages` WebSocket event for progressive loading
+- Clears buffer on summary markers (only keeps relevant context)
+
+**Frontend**:
+- Initial load: Last 50 messages (configurable via `limit` param)
+- "Load older messages" button loads previous 50 incrementally
+- Loading state with spinner animation
+- Tracks `offset`, `totalEntries`, `hasOlderMessages` for pagination
+
+**Impact for 44MB session (7,675 messages)**:
+- Memory: ~93% reduction (500 entries max vs all 7,675)
+- Network: ~99% reduction (50 messages initially vs all 7,675)
+- User can load more by clicking button
+
+**Files changed**:
+- `server/lib/sessions.js` - Circular buffer + pagination
+- `server/events/select-session.js` - Pass pagination params
+- `server/events/load-older-messages.js` - New event handler
+- `server/events/index.js` - Register new event
+- `src/composables/useWebSocket.js` - Pagination state + `loadOlderMessages()`
+- `src/components/ChatMessages.vue` - "Load older" button UI
+- `src/views/ChatView.vue` - Wire up pagination event
+
+### Configuration
+
+Environment variables (optional):
+```bash
+# Default pagination limit (messages per page)
+DEFAULT_MESSAGE_LIMIT=50
+
+# Max buffer size for circular buffer
+MAX_BUFFER_SIZE=500
+```
+
+Currently hardcoded with sensible defaults:
+- `limit`: 50 messages (initial load)
+- `maxBufferSize`: 500 entries (memory limit)
+- Load increment: 50 messages per button click
 
 ## References
 
