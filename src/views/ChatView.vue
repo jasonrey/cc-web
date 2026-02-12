@@ -3473,11 +3473,11 @@ watch(openedFile, (file) => {
 
   /* Terminal label - show Active/History instead of Terminal on mobile */
   .terminal-label-desktop {
-    display: none;
+    display: none !important;
   }
 
   .terminal-label-mobile {
-    display: inline;
+    display: inline !important;
   }
 
   /* Branch - smaller max width on mobile */
