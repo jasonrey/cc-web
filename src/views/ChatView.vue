@@ -1521,7 +1521,7 @@ watch(openedFile, (file) => {
             :class="[{ clickable: fileChangesText }, branchColorClass]"
             v-if="projectStatus.gitBranch"
             @click="openGitDiffModal"
-            :title="fileChangesText ? 'Click to view changes' : null"
+            :title="`${projectStatus.gitBranch}${fileChangesText ? ' - Click to view changes' : ''}`"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="6" y1="3" x2="6" y2="15"/>
@@ -1529,7 +1529,7 @@ watch(openedFile, (file) => {
               <circle cx="6" cy="18" r="3"/>
               <path d="M18 9a9 9 0 0 1-9 9"/>
             </svg>
-            {{ projectStatus.gitBranch }}
+            <span class="branch-name">{{ projectStatus.gitBranch }}</span>
             <span class="git-changes" v-if="fileChangesText">{{ fileChangesText }}</span>
           </span>
           <span class="toolbar-item no-git" v-else-if="projectStatus.cwd">
@@ -2455,22 +2455,6 @@ watch(openedFile, (file) => {
   min-height: 28px; /* Consistent height when permission tabs hidden */
 }
 
-@media (max-width: 480px) {
-  .toolbar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-  }
-
-  .toolbar-left {
-    order: 2;
-  }
-
-  .toolbar-right {
-    order: 1;
-    justify-content: space-between;
-  }
-}
 
 .toolbar-left {
   flex: 1;
@@ -2516,10 +2500,24 @@ watch(openedFile, (file) => {
   align-items: center;
   gap: 4px;
   color: var(--text-muted);
+  min-width: 0; /* Allow shrinking */
 }
 
 .toolbar-item.branch {
   color: var(--text-secondary);
+  max-width: 250px; /* Limit branch width to prevent pushing toolbar */
+}
+
+.branch-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.git-changes {
+  flex-shrink: 0; /* Don't shrink the changes count */
+  white-space: nowrap;
 }
 
 /* Branch color coding */
@@ -3480,6 +3478,11 @@ watch(openedFile, (file) => {
 
   .terminal-label-mobile {
     display: inline;
+  }
+
+  /* Branch - smaller max width on mobile */
+  .toolbar-item.branch {
+    max-width: 180px;
   }
 }
 
