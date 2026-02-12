@@ -73,7 +73,7 @@ async function gracefulShutdown(signal) {
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -137,7 +137,8 @@ httpServer = server;
 app.use(express.json());
 
 // Compress all responses (API and static files)
-app.use(compress({ threshold: 1024 }));
+// Threshold: 512 bytes - compress files larger than 0.5KB
+app.use(compress({ threshold: 512 }));
 
 // Session duration for cookie (from env or default 3 days)
 const SESSION_DURATION_DAYS = Number.parseInt(
@@ -271,6 +272,11 @@ if (existsSync(distPath)) {
   );
 
   // SPA fallback - serve index.html for non-API routes
+  // Read file once at startup and cache in memory
+  const indexHtmlPath = join(distPath, 'index.html');
+  const indexHtml = readFileSync(indexHtmlPath, 'utf8');
+  const indexHtmlStats = statSync(indexHtmlPath);
+
   app.use((req, res, next) => {
     if (
       req.method === 'GET' &&
@@ -278,7 +284,14 @@ if (existsSync(distPath)) {
       !req.path.startsWith('/ws') &&
       !req.path.startsWith('/docs')
     ) {
-      res.sendFile(join(distPath, 'index.html'));
+      // Set cache headers: always revalidate index.html
+      res.set({
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-cache',
+        'Last-Modified': indexHtmlStats.mtime.toUTCString(),
+      });
+      // Send through compression middleware
+      res.send(indexHtml);
     } else {
       next();
     }
