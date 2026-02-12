@@ -125,9 +125,9 @@ function handleTerminalTabClick() {
   // On mobile (<=768px), cycle through terminal subtabs
   if (window.innerWidth <= 768) {
     if (currentMode.value !== 'terminal') {
-      // First tap: switch to terminal mode (Active by default)
+      // First tap: switch to terminal mode (keep last subtab selection)
       currentMode.value = 'terminal';
-      terminalSubTab.value = 'active';
+      // Don't change terminalSubTab - it retains the last value
     } else {
       // Already in terminal mode: toggle between Active/History
       terminalSubTab.value = terminalSubTab.value === 'active' ? 'history' : 'active';
@@ -3446,29 +3446,18 @@ watch(openedFile, (file) => {
 
 /* Mobile styles */
 @media (max-width: 768px) {
-  /* Toolbar - swap order so git/status is above model/permission selectors */
+  /* Toolbar - keep single line on mobile */
   .toolbar {
-    flex-direction: column;
-    align-items: stretch;
     gap: 8px;
   }
 
   .toolbar-left {
-    order: 1; /* Git branch at top */
+    flex: 1;
+    min-width: 0;
   }
 
   .toolbar-right {
-    order: 2; /* Model/permission selectors below */
-    justify-content: flex-start;
-    flex-wrap: nowrap; /* Prevent wrapping */
-    overflow-x: auto; /* Allow horizontal scroll if needed */
-    min-width: 0; /* Allow shrinking */
-  }
-
-  /* Ensure child containers don't wrap on mobile */
-  .model-tabs,
-  .permission-tabs {
-    flex-wrap: nowrap;
+    flex-shrink: 0;
   }
 
   /* Mode tabs - keep single line on mobile */
