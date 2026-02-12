@@ -79,7 +79,6 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import compress from 'compression';
 import express from 'express';
-import expressStaticGzip from 'express-static-gzip';
 import { WebSocketServer } from 'ws';
 import { config } from './config.js';
 import {
@@ -137,8 +136,8 @@ httpServer = server;
 // Parse JSON and cookies
 app.use(express.json());
 
-// Compress API responses (gzip/brotli)
-app.use('/api', compress({ threshold: 1024 }));
+// Compress all responses (API and static files)
+app.use(compress({ threshold: 1024 }));
 
 // Session duration for cookie (from env or default 3 days)
 const SESSION_DURATION_DAYS = Number.parseInt(
@@ -158,6 +157,14 @@ app.get('/api/health', (_req, res) => {
     status: 'ok',
     version: getCurrentVersion(),
     timestamp: new Date().toISOString(),
+  });
+});
+
+// Debug endpoint to check WebSocket compression config
+app.get('/api/debug/ws-config', (_req, res) => {
+  res.json({
+    perMessageDeflate: wss.options.perMessageDeflate,
+    noServer: wss.options.noServer,
   });
 });
 
@@ -254,11 +261,12 @@ if (existsSync(docsPath)) {
 // ============================================
 const distPath = join(rootDir, 'dist');
 if (existsSync(distPath)) {
-  // Serve pre-compressed static files (gzip/brotli from Vite build)
+  // Serve static files with caching for assets
   app.use(
-    expressStaticGzip(distPath, {
-      enableBrotli: true,
-      orderPreference: ['br', 'gz'],
+    express.static(distPath, {
+      maxAge: '1y',
+      immutable: true,
+      index: false, // Don't auto-serve index.html
     }),
   );
 
@@ -299,6 +307,10 @@ server.on('upgrade', (request, socket, head) => {
 
   // Complete the upgrade
   wss.handleUpgrade(request, socket, head, (ws) => {
+    // Debug: log compression status
+    if (process.env.DEBUG === 'true') {
+      logger.log('WebSocket connected with extensions:', ws.extensions || 'none');
+    }
     wss.emit('connection', ws, request);
   });
 });

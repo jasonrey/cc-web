@@ -2,6 +2,39 @@
 
 All notable changes to cc-web (Claude Code Web).
 
+## 2026-02-13 - Compression Enabled (All Resources)
+
+### Performance Improvements
+- **Static File Compression**: Enabled Brotli/Gzip compression for all static assets
+  - JS bundle: 441KB → 123KB (Brotli) = 72% reduction
+  - CSS bundle: 86KB → 11KB (Brotli) = 87% reduction
+  - Uses Express `compression` middleware with runtime compression
+  - Supports Brotli (preferred), Gzip, and Deflate based on client capabilities
+
+- **API Response Compression**: Enabled for all API endpoints
+  - Threshold: 1KB (responses below are not compressed)
+  - Automatic content negotiation based on Accept-Encoding header
+  - Same middleware handles both static and API responses
+
+- **WebSocket Compression**: Enabled permessage-deflate (RFC 7692)
+  - Compression level: 3 (balanced performance/size)
+  - Threshold: 1KB (messages below are not compressed)
+  - Context takeover disabled for better small message handling
+  - Successfully negotiated with all WebSocket clients
+
+### Technical Changes
+- Replaced `express-static-gzip` with standard `compression` middleware
+  - More reliable and works with all clients
+  - Runtime compression provides better compatibility
+- Moved compression middleware to global scope
+- Added debug logging for WebSocket extension negotiation
+- WebSocket server already had `perMessageDeflate` configured correctly
+
+### Verification
+- Static files: Tested with Playwright - confirmed `Content-Encoding: br`
+- API endpoints: Confirmed compression middleware active (`Vary: Accept-Encoding`)
+- WebSocket: Server logs show `permessage-deflate` successfully negotiated
+
 ## 2026-02-12 - Turn-Based Pagination & Session Loading Optimization
 
 ### Performance & UX Improvements
@@ -40,15 +73,7 @@ All notable changes to cc-web (Claude Code Web).
 - Turn counting happens during single-pass JSONL streaming (efficient, no memory impact)
 - Pagination offset remains entry-based internally for accurate buffer slicing
 
-## 2026-02-12 - Compression, Plan Mode Fix, File Editor UX
-
-### Performance Improvements
-- **HTTP/API Compression**: Added runtime gzip/brotli compression for API responses (1KB threshold)
-- **Static Asset Pre-compression**: Vite build now generates `.gz` and `.br` files at build time
-  - JS bundle: 440KB → 143KB (gzip) / 122KB (brotli) = 72% savings
-  - CSS bundle: 86KB → 12.6KB (gzip) / 11KB (brotli) = 87% savings
-  - Zero CPU cost at serve time using `express-static-gzip`
-- **WebSocket Compression**: Enabled per-message deflate (1KB threshold, compression level 3)
+## 2026-02-12 - Plan Mode Fix & File Editor UX
 
 ### Bug Fixes
 - **Plan Mode Output**: Fixed plan content not displaying after ExitPlanMode
