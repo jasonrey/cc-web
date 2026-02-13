@@ -4,6 +4,9 @@
 
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
+import { existsSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { logger } from './logger.js';
 
 /**
@@ -38,6 +41,17 @@ export async function restartWithInvertedSpawn(reason, newVersion = null) {
     `New server process spawned (PID: ${newProc.pid}, reason: ${reason}${newVersion ? `, version: ${newVersion}` : ''})`,
   );
 
+  // Update PID file if it exists (for daemon mode)
+  const pidFile = getPidFile();
+  if (pidFile && existsSync(pidFile)) {
+    try {
+      writeFileSync(pidFile, newProc.pid.toString(), 'utf8');
+      logger.log(`Updated PID file: ${pidFile} -> ${newProc.pid}`);
+    } catch (err) {
+      logger.log(`Warning: Failed to update PID file: ${err.message}`);
+    }
+  }
+
   // Wait for new server to be ready (verify it started)
   await new Promise((resolve) => setTimeout(resolve, 2000));
 
@@ -51,4 +65,24 @@ export async function restartWithInvertedSpawn(reason, newVersion = null) {
   }
 
   return restartToken;
+}
+
+/**
+ * Get PID file path (matches CLI logic)
+ * @returns {string|null} PID file path or null if not in daemon mode
+ */
+function getPidFile() {
+  // Check environment variable (set by CLI)
+  if (process.env.PID_FILE) {
+    return resolve(process.env.PID_FILE);
+  }
+
+  // Check default location only if we think we're in daemon mode
+  // (heuristic: if we were started with detached stdio, likely daemon)
+  const defaultPidFile = join(homedir(), '.cc-web', 'cc-web.pid');
+  if (existsSync(defaultPidFile)) {
+    return defaultPidFile;
+  }
+
+  return null;
 }

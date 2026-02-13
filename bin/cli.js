@@ -177,6 +177,11 @@ if (options.bypassToken) {
   env.DEBUG_TOKEN = options.bypassToken;
 }
 
+// Pass PID file path to server (for restart to update it)
+if (options.pidFile) {
+  env.PID_FILE = resolve(options.pidFile);
+}
+
 // Start the server
 if (!options.quiet) {
   console.log(`Starting cc-web on http://${options.host}:${options.port}`);
