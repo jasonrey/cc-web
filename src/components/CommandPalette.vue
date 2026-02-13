@@ -21,18 +21,61 @@ const searchQuery = ref('');
 const selectedIndex = ref(0);
 const inputRef = ref(null);
 
-// Filter sessions by search query
-const filteredSessions = computed(() => {
+// Group sessions by project
+const groupedSessions = computed(() => {
   const query = searchQuery.value.toLowerCase().trim();
-  if (!query) return props.sessions.slice(0, 20);
+  let sessionsToGroup = props.sessions;
 
-  return props.sessions
-    .filter((session) => {
-      const title = (session.title || 'Untitled').toLowerCase();
+  // Filter by search query if present
+  if (query) {
+    sessionsToGroup = props.sessions.filter((session) => {
+      const title = (
+        session.title ||
+        session.firstPrompt ||
+        'Untitled'
+      ).toLowerCase();
       const project = (session.projectName || '').toLowerCase();
       return title.includes(query) || project.includes(query);
-    })
-    .slice(0, 20);
+    });
+  }
+
+  // Group by project
+  const groups = {};
+  for (const session of sessionsToGroup) {
+    const projectSlug = session.projectSlug;
+    if (!groups[projectSlug]) {
+      groups[projectSlug] = {
+        projectSlug,
+        projectName: session.projectName,
+        sessions: [],
+      };
+    }
+    groups[projectSlug].sessions.push(session);
+  }
+
+  // Convert to array and limit sessions per project
+  return Object.values(groups)
+    .map((group) => ({
+      ...group,
+      sessions: group.sessions.slice(0, 5), // Show max 5 sessions per project
+    }))
+    .slice(0, 10); // Show max 10 projects
+});
+
+// Flatten for keyboard navigation
+const flattenedItems = computed(() => {
+  const items = [];
+  for (const group of groupedSessions.value) {
+    items.push({ type: 'project', ...group });
+    for (const session of group.sessions) {
+      items.push({
+        type: 'session',
+        ...session,
+        projectName: group.projectName,
+      });
+    }
+  }
+  return items;
 });
 
 // Reset state when palette opens
@@ -50,7 +93,7 @@ watch(
 );
 
 // Reset selected index when results change
-watch(filteredSessions, () => {
+watch(flattenedItems, () => {
   selectedIndex.value = 0;
 });
 
@@ -63,7 +106,7 @@ function handleKeydown(e) {
 
   if (e.key === 'ArrowDown') {
     e.preventDefault();
-    if (selectedIndex.value < filteredSessions.value.length - 1) {
+    if (selectedIndex.value < flattenedItems.value.length - 1) {
       selectedIndex.value++;
     }
     return;
@@ -79,7 +122,12 @@ function handleKeydown(e) {
 
   if (e.key === 'Enter') {
     e.preventDefault();
-    selectSession(filteredSessions.value[selectedIndex.value]);
+    const item = flattenedItems.value[selectedIndex.value];
+    if (item?.type === 'session') {
+      selectSession(item);
+    } else if (item?.type === 'project') {
+      createNewSession(item.projectSlug);
+    }
     return;
   }
 }
@@ -87,13 +135,15 @@ function handleKeydown(e) {
 function selectSession(session) {
   if (!session) return;
   emit('close');
-  router.push({
-    name: 'chat',
-    params: {
-      project: session.projectSlug,
-      session: session.sessionId,
-    },
-  });
+  // Use full page reload to ensure clean WebSocket state
+  window.location.href = `/project/${session.projectSlug}/session/${session.sessionId}`;
+}
+
+function createNewSession(projectSlug) {
+  if (!projectSlug) return;
+  emit('close');
+  // Use full page reload to ensure clean WebSocket state
+  window.location.href = `/project/${projectSlug}/session/new`;
 }
 
 // Use shared formatRelativeTime utility
@@ -120,21 +170,47 @@ const formatTime = formatRelativeTime;
           <kbd class="palette-hint">esc</kbd>
         </div>
 
-        <div class="palette-results" v-if="filteredSessions.length > 0">
-          <div
-            v-for="(session, index) in filteredSessions"
-            :key="session.sessionId"
-            class="palette-item"
-            :class="{ selected: index === selectedIndex }"
-            @click="selectSession(session)"
-            @mouseenter="selectedIndex = index"
-          >
-            <div class="palette-item-content">
-              <span class="palette-item-title">{{ session.title || 'Untitled' }}</span>
-              <span class="palette-item-project">{{ session.projectName }}</span>
+        <div class="palette-results" v-if="groupedSessions.length > 0">
+          <template v-for="(group, groupIndex) in groupedSessions" :key="group.projectSlug">
+            <!-- Project header -->
+            <div
+              class="palette-item palette-item-project"
+              :class="{ selected: flattenedItems[selectedIndex]?.type === 'project' && flattenedItems[selectedIndex]?.projectSlug === group.projectSlug }"
+              @mouseenter="selectedIndex = groupIndex * (group.sessions.length + 1)"
+            >
+              <div class="palette-project-header">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                </svg>
+                <span class="palette-project-name">{{ group.projectName }}</span>
+              </div>
+              <button
+                class="palette-new-session-btn"
+                @click.stop="createNewSession(group.projectSlug)"
+                title="New session"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <line x1="12" y1="5" x2="12" y2="19"/>
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+              </button>
             </div>
-            <span class="palette-item-time">{{ formatTime(session.modified) }}</span>
-          </div>
+
+            <!-- Sessions under this project -->
+            <div
+              v-for="(session, sessionIndex) in group.sessions"
+              :key="session.sessionId"
+              class="palette-item palette-item-session"
+              :class="{ selected: flattenedItems[selectedIndex]?.sessionId === session.sessionId }"
+              @click="selectSession(session)"
+              @mouseenter="selectedIndex = groupIndex * (group.sessions.length + 1) + sessionIndex + 1"
+            >
+              <div class="palette-item-content">
+                <span class="palette-item-title">{{ session.title || session.firstPrompt || 'Untitled' }}</span>
+              </div>
+              <span class="palette-item-time">{{ formatTime(session.modified) }}</span>
+            </div>
+          </template>
         </div>
 
         <div class="palette-empty" v-else-if="searchQuery">
@@ -232,6 +308,62 @@ const formatTime = formatRelativeTime;
   background: var(--bg-tertiary);
 }
 
+.palette-item-project {
+  position: relative;
+  padding: 8px 12px;
+  margin-bottom: 4px;
+  background: var(--bg-secondary);
+}
+
+.palette-item-project:hover {
+  background: var(--bg-tertiary);
+}
+
+.palette-item-session {
+  padding-left: 32px;
+}
+
+.palette-project-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.palette-project-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.palette-new-session-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: var(--radius-sm);
+  color: #3b82f6;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.palette-new-session-btn:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.5);
+  color: #2563eb;
+}
+
 .palette-item-content {
   flex: 1;
   min-width: 0;
@@ -244,14 +376,6 @@ const formatTime = formatRelativeTime;
   font-size: 13px;
   font-weight: 500;
   color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.palette-item-project {
-  font-size: 12px;
-  color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
