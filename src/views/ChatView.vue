@@ -71,6 +71,9 @@ const debugModeEnabled = computed(() => settingsContext.debugMode());
 const { hoveredElement, popoverPosition, popoverData } =
   useDebugMode(debugModeEnabled);
 
+// Auto-save files setting
+const autoSaveFilesEnabled = computed(() => settingsContext.autoSaveFiles());
+
 // Recent sessions switcher - show 2 recent sessions excluding current
 const displayedRecentSessions = computed(() => {
   const recent = recentSessions.value || [];
@@ -1587,7 +1590,7 @@ watch(openedFile, (file) => {
         :file-path="openedFile.path"
         :content="openedFile.content"
         :loading="openedFile.loading"
-        :auto-save="mdMode"
+        :auto-save="autoSaveFilesEnabled"
         @save="handleFileSave"
         @close="handleFileClose"
       />

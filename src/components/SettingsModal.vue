@@ -85,6 +85,21 @@ function closeModal() {
             Hover over elements to see their ID and class names for development
           </p>
         </div>
+
+        <!-- Auto-save Files Setting -->
+        <div class="setting-item">
+          <label class="setting-label">
+            <input
+              type="checkbox"
+              v-model="localSettings.autoSaveFiles"
+              class="setting-checkbox"
+            />
+            <span class="setting-title">Auto-save Files</span>
+          </label>
+          <p class="setting-description">
+            Automatically save file changes after 1 second of inactivity
+          </p>
+        </div>
       </div>
     </div>
   </div>

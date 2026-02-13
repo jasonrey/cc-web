@@ -17,7 +17,7 @@ const {
 
 // Settings state
 const showSettings = ref(false);
-const settings = ref({ debugMode: false });
+const settings = ref({ debugMode: false, autoSaveFiles: true });
 
 function openSettings() {
   showSettings.value = true;
@@ -95,6 +95,7 @@ provide('sidebar', {
 provide('settings', {
   settings,
   debugMode: () => settings.value.debugMode,
+  autoSaveFiles: () => settings.value.autoSaveFiles,
 });
 
 onMounted(() => {
