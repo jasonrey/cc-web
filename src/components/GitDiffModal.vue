@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useWebSocket } from '../composables/useWebSocket';
 
 const props = defineProps({
@@ -21,6 +21,11 @@ const showFileList = ref(true);
 
 onMounted(() => {
   loadGitDiff();
+  document.addEventListener('keydown', handleKeydown);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeydown);
 });
 
 async function loadGitDiff() {
@@ -122,6 +127,13 @@ function getStatusLabel(status) {
 
 function close() {
   emit('close');
+}
+
+function handleKeydown(e) {
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    close();
+  }
 }
 </script>
 

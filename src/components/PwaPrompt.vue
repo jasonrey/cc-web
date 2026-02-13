@@ -9,6 +9,10 @@ const showUpdatePrompt = ref(false);
 const { needRefresh, updateServiceWorker } = useRegisterSW({
   onRegistered(r) {
     console.log('Service Worker registered:', r);
+    // Check for updates every 60 seconds
+    setInterval(() => {
+      r?.update();
+    }, 60000);
   },
   onRegisterError(error) {
     console.error('Service Worker registration error:', error);

@@ -162,8 +162,50 @@ function handleOverlayClick() {
             :href="`/project/${session.projectSlug}/session/${session.sessionId}`"
             class="sidebar-link"
           >
-            <div class="item-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <div class="item-icon" :class="{ 'has-status': sessionStatuses.get(session.sessionId) }">
+              <!-- Show status indicator if session has status -->
+              <template v-if="sessionStatuses.get(session.sessionId)">
+                <!-- Running: animated spinner -->
+                <svg
+                  v-if="sessionStatuses.get(session.sessionId).status === 'running'"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  class="status-spinner"
+                  :class="sessionStatuses.get(session.sessionId).status"
+                >
+                  <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="31.4 31.4" stroke-linecap="round"/>
+                </svg>
+                <!-- Completed: checkmark -->
+                <svg
+                  v-else-if="sessionStatuses.get(session.sessionId).status === 'completed'"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  :class="sessionStatuses.get(session.sessionId).status"
+                >
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                <!-- Error: X -->
+                <svg
+                  v-else-if="sessionStatuses.get(session.sessionId).status === 'error'"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  :class="sessionStatuses.get(session.sessionId).status"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </template>
+              <!-- Default session icon when no status -->
+              <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
               </svg>
             </div>
@@ -182,48 +224,6 @@ function handleOverlayClick() {
               </p>
             </div>
           </a>
-          <!-- Task status indicator -->
-          <div
-            v-if="sessionStatuses.get(session.sessionId)"
-            class="session-status-indicator"
-            :class="sessionStatuses.get(session.sessionId).status"
-          >
-            <!-- Running: animated spinner -->
-            <svg
-              v-if="sessionStatuses.get(session.sessionId).status === 'running'"
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              class="status-spinner"
-            >
-              <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="31.4 31.4" stroke-linecap="round"/>
-            </svg>
-            <!-- Completed: checkmark -->
-            <svg
-              v-else-if="sessionStatuses.get(session.sessionId).status === 'completed'"
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.5"
-            >
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
-            <!-- Error: X -->
-            <svg
-              v-else-if="sessionStatuses.get(session.sessionId).status === 'error'"
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.5"
-            >
-              <line x1="18" y1="6" x2="6" y2="18"/>
-              <line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </div>
         </li>
         <li v-if="recentSessions.length === 0" class="sidebar-empty">
           No recent sessions
@@ -639,6 +639,19 @@ function handleOverlayClick() {
   background: var(--bg-hover);
 }
 
+/* Status colors in icon */
+.item-icon svg.running {
+  color: #3b82f6;
+}
+
+.item-icon svg.completed {
+  color: var(--success-color);
+}
+
+.item-icon svg.error {
+  color: var(--error-color);
+}
+
 .item-content {
   flex: 1;
   min-width: 0;
@@ -708,29 +721,6 @@ function handleOverlayClick() {
   text-align: center;
   color: var(--text-muted);
   font-size: 13px;
-}
-
-/* Session status indicator */
-.session-status-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-  margin-right: 10px;
-}
-
-.session-status-indicator.running {
-  color: #3b82f6;
-}
-
-.session-status-indicator.completed {
-  color: var(--success-color);
-}
-
-.session-status-indicator.error {
-  color: var(--error-color);
 }
 
 /* Animated spinner for running status */

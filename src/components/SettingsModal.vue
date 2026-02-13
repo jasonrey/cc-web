@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 
 const props = defineProps({
   show: {
@@ -48,6 +48,30 @@ watch(
 function closeModal() {
   emit('close');
 }
+
+function handleKeydown(e) {
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    closeModal();
+  }
+}
+
+// Add keyboard listener when modal is shown
+watch(
+  () => props.show,
+  (isVisible) => {
+    if (isVisible) {
+      document.addEventListener('keydown', handleKeydown);
+    } else {
+      document.removeEventListener('keydown', handleKeydown);
+    }
+  },
+);
+
+// Cleanup on unmount
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeydown);
+});
 </script>
 
 <template>

@@ -262,6 +262,18 @@ if (existsSync(docsPath)) {
 // ============================================
 const distPath = join(rootDir, 'dist');
 if (existsSync(distPath)) {
+  // Service Worker files - MUST NOT be cached to ensure updates work
+  app.use((req, res, next) => {
+    if (req.path === '/sw.js' || req.path.startsWith('/workbox-')) {
+      res.set({
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache',
+        Expires: '0',
+      });
+    }
+    next();
+  });
+
   // Serve static files with caching for assets
   app.use(
     express.static(distPath, {

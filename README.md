@@ -113,6 +113,8 @@ Run `cc-web --help` for all options.
 | Shortcut | Action |
 |----------|--------|
 | `Ctrl/Cmd+K` | Quick session switcher |
+| `Ctrl/Cmd+B` | Toggle sidebar |
+| `Ctrl/Cmd+,` | Open settings |
 | `Ctrl/Cmd+1` | Switch to Chat mode |
 | `Ctrl/Cmd+2` | Switch to Terminal mode |
 | `Ctrl/Cmd+3` | Switch to Files mode |

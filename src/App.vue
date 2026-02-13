@@ -56,6 +56,16 @@ function handleGlobalKeydown(e) {
     // Refresh sessions when opening palette (immediate for user action)
     getRecentSessionsImmediate();
   }
+  // Ctrl+B or Cmd+B: Toggle sidebar
+  if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+    e.preventDefault();
+    toggleSidebar();
+  }
+  // Ctrl+, or Cmd+,: Open settings
+  if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+    e.preventDefault();
+    openSettings();
+  }
 }
 
 function closePalette() {

@@ -28,7 +28,7 @@ const router = useRouter();
 const route = useRoute();
 
 // Get recent sessions from global WebSocket
-const { recentSessions } = useWebSocket();
+const { recentSessions, sessionStatuses } = useWebSocket();
 
 // Use scoped WebSocket - each ChatView gets its own connection
 const {
@@ -2004,7 +2004,7 @@ watch(openedFile, (file) => {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
             </svg>
-            Chat
+            <span class="mode-label">Chat</span>
           </button>
           <button
             class="mode-tab terminal-tab"
@@ -2050,7 +2050,7 @@ watch(openedFile, (file) => {
               <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
               <polyline points="13 2 13 9 20 9"/>
             </svg>
-            Files
+            <span class="mode-label">Files</span>
           </button>
         </div>
 
@@ -2065,7 +2065,49 @@ watch(openedFile, (file) => {
               class="recent-session-item"
               :title="getSessionDisplayTitle(session)"
             >
-              {{ getSessionDisplayTitle(session) }}
+              <!-- Status indicator at start -->
+              <span
+                v-if="sessionStatuses.get(session.sessionId)"
+                class="recent-session-status"
+                :class="sessionStatuses.get(session.sessionId).status"
+              >
+                <!-- Running: spinner -->
+                <svg
+                  v-if="sessionStatuses.get(session.sessionId).status === 'running'"
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  class="status-spinner"
+                >
+                  <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="31.4 31.4" stroke-linecap="round"/>
+                </svg>
+                <!-- Completed: checkmark -->
+                <svg
+                  v-else-if="sessionStatuses.get(session.sessionId).status === 'completed'"
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                >
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                <!-- Error: X -->
+                <svg
+                  v-else-if="sessionStatuses.get(session.sessionId).status === 'error'"
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </span>
+              <span class="recent-session-text">{{ getSessionDisplayTitle(session) }}</span>
             </a>
           </div>
         </template>
@@ -3014,6 +3056,18 @@ watch(openedFile, (file) => {
   background: var(--bg-tertiary);
 }
 
+/* Hide mode tab labels on mobile - show icons only */
+@media (max-width: 639px) {
+  .mode-label {
+    display: none;
+  }
+
+  /* Reduce padding when showing icons only */
+  .mode-tab {
+    padding: 6px 10px;
+  }
+}
+
 .mode-badge {
   font-size: 10px;
   padding: 1px 5px;
@@ -3183,7 +3237,9 @@ watch(openedFile, (file) => {
 }
 
 .recent-session-item {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 6px 12px;
   font-size: 10px;
   color: rgba(255, 255, 255, 0.7);
@@ -3193,10 +3249,37 @@ watch(openedFile, (file) => {
   text-decoration: none;
   cursor: pointer;
   transition: all 0.15s ease;
+  max-width: 150px;
+}
+
+.recent-session-text {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 150px;
+  min-width: 0;
+}
+
+.recent-session-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.recent-session-status.running {
+  color: #3b82f6;
+}
+
+.recent-session-status.completed {
+  color: var(--success-color);
+}
+
+.recent-session-status.error {
+  color: var(--error-color);
+}
+
+.recent-session-status .status-spinner {
+  animation: spin 1s linear infinite;
 }
 
 .recent-session-item:hover {
@@ -3773,13 +3856,13 @@ watch(openedFile, (file) => {
     display: none !important;
   }
 
-  /* Terminal label - show Active/History instead of Terminal on mobile */
+  /* Hide all mode tab text labels on mobile - show icons only */
   .terminal-label-desktop {
     display: none !important;
   }
 
   .terminal-label-mobile {
-    display: inline !important;
+    display: none !important;
   }
 
   /* Branch - smaller max width on mobile */
