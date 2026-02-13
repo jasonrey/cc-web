@@ -48,16 +48,16 @@ const displayText = computed(() => {
 <style scoped>
 .debug-popover {
   position: fixed;
-  background: rgba(0, 0, 0, 0.95);
-  border: 1px solid #60a5fa;
-  border-radius: 4px;
-  padding: 6px 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
   font-size: 11px;
-  font-family: 'Monaco', 'Courier New', monospace;
-  color: #fbbf24;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
   pointer-events: none;
   z-index: 100000;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   max-width: 400px;
   word-break: break-all;
   white-space: nowrap;

@@ -17,7 +17,7 @@ import FileExplorer from '../components/FileExplorer.vue';
 import GitDiffModal from '../components/GitDiffModal.vue';
 import TerminalOutput from '../components/TerminalOutput.vue';
 import { useDebugMode } from '../composables/useDebugMode';
-import { useChatWebSocket } from '../composables/useWebSocket';
+import { useChatWebSocket, useWebSocket } from '../composables/useWebSocket';
 import { getShortPath } from '../utils/format.js';
 
 // Get sidebar and settings from App.vue
@@ -26,6 +26,9 @@ const settingsContext = inject('settings');
 
 const router = useRouter();
 const route = useRoute();
+
+// Get recent sessions from global WebSocket
+const { recentSessions } = useWebSocket();
 
 // Use scoped WebSocket - each ChatView gets its own connection
 const {
@@ -67,6 +70,25 @@ const {
 const debugModeEnabled = computed(() => settingsContext.debugMode());
 const { hoveredElement, popoverPosition, popoverData } =
   useDebugMode(debugModeEnabled);
+
+// Recent sessions switcher - show 2 recent sessions excluding current
+const displayedRecentSessions = computed(() => {
+  const recent = recentSessions.value || [];
+  const filtered = recent.filter((s) => s.sessionId !== currentSession.value);
+  return filtered.slice(0, 2);
+});
+
+function getSessionDisplayTitle(session) {
+  const projectName = session.projectName || 'Unknown';
+  const title = session.title || session.firstPrompt || 'Untitled';
+  return `${projectName} / ${title}`;
+}
+
+function getSessionUrl(session) {
+  // Route format: /project/:project/session/:session
+  const projectSlug = session.projectSlug || session.projectPath?.replace(/\//g, '-').replace(/^-/, '-');
+  return `/project/${projectSlug}/session/${session.sessionId}`;
+}
 
 // Mode state: 'chat' | 'terminal' | 'files'
 const currentMode = ref('chat');
@@ -139,6 +161,7 @@ const fileModals = ref({
   delete: null,
   editPath: false,
   editPathValue: '',
+  pendingFileToOpen: null, // Track file to open after creation
 });
 
 // Git Diff Modal
@@ -1207,6 +1230,10 @@ function confirmCreateFile() {
   if (!fileName) return;
 
   const filePath = `${filesCurrentPath.value}/${fileName}`.replace(/\/+/g, '/');
+
+  // Store the path to open after creation
+  fileModals.value.pendingFileToOpen = filePath;
+
   send({
     type: 'files:create',
     path: filePath,
@@ -1307,6 +1334,18 @@ function handleFileMessage(msg) {
       break;
     case 'files:write:error':
       console.error('Write error:', msg.error);
+      break;
+    case 'files:create:result':
+      // If we have a pending file to open, open it now
+      if (fileModals.value.pendingFileToOpen === msg.path) {
+        openedFile.value = { path: msg.path, content: '', loading: true };
+        send({ type: 'files:read', path: msg.path });
+        fileModals.value.pendingFileToOpen = null;
+      }
+      break;
+    case 'files:create:error':
+      console.error('Create error:', msg.error);
+      fileModals.value.pendingFileToOpen = null;
       break;
   }
 }
@@ -1451,13 +1490,23 @@ watch(openedFile, (file) => {
       <template #content>
         <div class="header-breadcrumb">
           <!-- Folder name (last segment) - links to sessions -->
-          <router-link
-            v-if="projectStatus.cwd"
-            :to="{ name: 'sessions', params: { project: projectSlug } }"
-            class="breadcrumb-folder"
-          >
-            {{ projectStatus.cwd.split('/').pop() }}
-          </router-link>
+          <div v-if="projectStatus.cwd" class="breadcrumb-folder-group">
+            <router-link
+              :to="{ name: 'sessions', params: { project: projectSlug } }"
+              class="breadcrumb-folder"
+            >
+              {{ projectStatus.cwd.split('/').pop() }}
+            </router-link>
+            <router-link
+              :to="{ name: 'chat', params: { project: projectSlug, session: 'new' } }"
+              class="breadcrumb-new-session-btn"
+              title="New session"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+            </router-link>
+          </div>
           <span class="breadcrumb-separator">/</span>
           <!-- Session title (editable) -->
           <div class="session-title-row">
@@ -2000,6 +2049,22 @@ watch(openedFile, (file) => {
           </button>
         </div>
 
+        <!-- Recent sessions switcher -->
+        <template v-if="displayedRecentSessions.length > 0">
+          <div class="recent-sessions-divider"></div>
+          <div class="recent-sessions-group">
+            <a
+              v-for="session in displayedRecentSessions"
+              :key="session.sessionId"
+              :href="getSessionUrl(session)"
+              class="recent-session-item"
+              :title="getSessionDisplayTitle(session)"
+            >
+              {{ getSessionDisplayTitle(session) }}
+            </a>
+          </div>
+        </template>
+
         <!-- Task status indicator (flex right) -->
         <div class="task-status-indicator">
           <button
@@ -2264,6 +2329,12 @@ watch(openedFile, (file) => {
   min-width: 0;
 }
 
+.breadcrumb-folder-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .breadcrumb-folder {
   color: var(--text-secondary);
   font-size: 14px;
@@ -2275,6 +2346,23 @@ watch(openedFile, (file) => {
 
 .breadcrumb-folder:hover {
   color: var(--text-primary);
+}
+
+.breadcrumb-new-session-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  color: var(--text-muted);
+  background: transparent;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s, color 0.15s;
+  text-decoration: none;
+}
+
+.breadcrumb-new-session-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
 }
 
 .breadcrumb-separator {
@@ -3071,6 +3159,64 @@ watch(openedFile, (file) => {
 .files-explorer-header .action-btn.active {
   background: var(--bg-tertiary);
   color: var(--text-primary);
+}
+
+/* Recent sessions switcher */
+.recent-sessions-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0 12px;
+}
+
+.recent-sessions-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.recent-session-item {
+  display: block;
+  padding: 6px 12px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 150px;
+}
+
+.recent-session-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.recent-session-item:active {
+  transform: scale(0.98);
+}
+
+/* Mobile: Flex to fill space */
+@media (max-width: 639px) {
+  .recent-sessions-group {
+    flex: 1;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .recent-session-item {
+    flex: 1;
+    min-width: 0;
+    max-width: none;
+  }
 }
 
 /* Task status indicator in mode tabs bar */

@@ -4,11 +4,27 @@ export function useDebugMode(enabled) {
   const hoveredElement = ref(null);
   const popoverPosition = ref({ x: 0, y: 0 });
   const popoverData = ref({ id: '', classes: [] });
+  let previousOutline = '';
+  let previousElement = null;
 
   function handleMouseOver(event) {
     if (!enabled.value) return;
 
     const target = event.target;
+
+    // Remove outline from previous element
+    if (previousElement && previousElement !== target) {
+      previousElement.style.outline = previousOutline;
+    }
+
+    // Store current element's outline
+    previousOutline = target.style.outline;
+    previousElement = target;
+
+    // Add dotted border
+    target.style.outline = '2px dotted rgba(96, 165, 250, 0.6)';
+    target.style.outlineOffset = '2px';
+
     hoveredElement.value = target;
 
     // Get element info
@@ -33,8 +49,17 @@ export function useDebugMode(enabled) {
     };
   }
 
-  function handleMouseOut() {
+  function handleMouseOut(event) {
     if (!enabled.value) return;
+
+    const target = event.target;
+
+    // Restore original outline
+    if (target === previousElement) {
+      target.style.outline = previousOutline;
+      previousElement = null;
+    }
+
     hoveredElement.value = null;
   }
 
@@ -46,6 +71,11 @@ export function useDebugMode(enabled) {
   onUnmounted(() => {
     document.removeEventListener('mouseover', handleMouseOver, true);
     document.removeEventListener('mouseout', handleMouseOut, true);
+
+    // Cleanup outline on unmount
+    if (previousElement) {
+      previousElement.style.outline = previousOutline;
+    }
   });
 
   return {

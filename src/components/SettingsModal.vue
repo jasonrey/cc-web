@@ -106,9 +106,9 @@ function closeModal() {
 }
 
 .modal-content {
-  background: #1e1e1e;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
   width: 90%;
   max-width: 500px;
   max-height: 80vh;
@@ -120,7 +120,7 @@ function closeModal() {
 
 .modal-header {
   padding: 16px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -130,16 +130,16 @@ function closeModal() {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.95);
+  color: var(--text-primary);
 }
 
 .close-btn {
   padding: 4px;
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-secondary);
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -147,8 +147,8 @@ function closeModal() {
 }
 
 .close-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.9);
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .modal-body {
@@ -168,22 +168,49 @@ function closeModal() {
 }
 
 .setting-checkbox {
+  appearance: none;
   width: 18px;
   height: 18px;
   cursor: pointer;
-  accent-color: #60a5fa;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  transition: all 0.15s ease;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.setting-checkbox:hover {
+  border-color: var(--text-secondary);
+}
+
+.setting-checkbox:checked {
+  background: var(--text-primary);
+  border-color: var(--text-primary);
+}
+
+.setting-checkbox:checked::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 4px;
+  height: 8px;
+  border: solid var(--bg-primary);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 
 .setting-title {
   font-size: 14px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--text-primary);
 }
 
 .setting-description {
   margin: 8px 0 0 30px;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-secondary);
   line-height: 1.5;
 }
 </style>
