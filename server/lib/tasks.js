@@ -64,6 +64,21 @@ export function clearOldTasks(maxAgeMs = 24 * 60 * 60 * 1000) {
 }
 
 /**
+ * Clear a completed/error task when user has viewed it
+ * Helps prevent memory buildup by immediately clearing tasks once acknowledged
+ * @param {string} sessionId
+ * @returns {boolean} Whether task was cleared
+ */
+export function clearCompletedTask(sessionId) {
+  const task = tasks.get(sessionId);
+  if (task && (task.status === 'completed' || task.status === 'error')) {
+    tasks.delete(sessionId);
+    return true;
+  }
+  return false;
+}
+
+/**
  * Cancel a running task
  * @param {string} sessionId
  * @returns {boolean} Whether cancellation was successful

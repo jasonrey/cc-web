@@ -19,7 +19,7 @@
  */
 
 import { loadSessionHistory } from '../lib/sessions.js';
-import { getOrCreateTask } from '../lib/tasks.js';
+import { clearCompletedTask, getOrCreateTask } from '../lib/tasks.js';
 import {
   broadcast,
   getSessionWatcherCount,
@@ -112,6 +112,10 @@ export async function handler(ws, message, context) {
     loadedTurns,
     offset,
   });
+
+  // Clear completed/error task from memory when user opens the session
+  // This prevents memory buildup - no need to keep the task after user has seen it
+  clearCompletedTask(sessionId);
 
   // Broadcast to all clients to clear sidebar indicator for this session
   broadcast({
