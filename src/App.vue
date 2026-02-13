@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, onUnmounted, provide, ref } from 'vue';
 import CommandPalette from './components/CommandPalette.vue';
+import PwaPrompt from './components/PwaPrompt.vue';
 import SettingsModal from './components/SettingsModal.vue';
 import Sidebar from './components/Sidebar.vue';
 import { useWebSocket } from './composables/useWebSocket';
@@ -126,6 +127,7 @@ onUnmounted(() => {
       @close="closeSettings"
       @update="updateSettings"
     />
+    <PwaPrompt />
   </div>
 </template>
 

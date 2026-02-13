@@ -2,6 +2,61 @@
 
 All notable changes to cc-web (Claude Code Web).
 
+## 2026-02-13 - Progressive Web App & UI Enhancements
+
+### New Features
+- **Progressive Web App (PWA)**: Installable as standalone application
+  - Install on desktop/mobile like native app
+  - Standalone window without browser chrome
+  - Custom terminal icon with Claude orange accent
+  - Service worker for asset caching and fast loads
+  - Update prompts for new versions
+  - Works offline (UI shell only, chat requires connection)
+  - Manifest, icons (192x192, 512x512), and service worker auto-generated
+
+- **Session Switcher in Toolbar**: Quick access to recent sessions
+  - Shows 2 most recent sessions in toolbar
+  - Format: `projectName / Session Title`
+  - Compact 10px font size
+  - Excludes current session
+  - Works on desktop and mobile
+
+- **New Session Button**: Quick session creation from breadcrumb
+  - Small + icon beside project name in header
+  - Links directly to `/project/{slug}/session/new`
+  - Styled to match existing UI
+
+- **File Auto-Edit**: Created files open immediately for editing
+  - After creating file in Files tab, automatically opens in editor
+  - No extra click needed to start editing
+
+### Improvements
+- **Debug Mode Enhancements**:
+  - Updated popover design to match styleguide (CSS variables)
+  - Added dotted blue border around hovered elements
+  - Better visual feedback for element inspection
+
+- **Settings Modal Design**:
+  - Custom checkbox design matching styleguide
+  - Checkmark animation on toggle
+  - Consistent CSS variables throughout
+
+- **Compression**: All HTML pages now served with compression (Brotli/Gzip)
+
+### Technical Details
+- **PWA Stack**: vite-plugin-pwa, Workbox service worker
+- **Caching Strategy**:
+  - Precache static assets (JS, CSS, icons)
+  - Runtime cache for Google Fonts (1 year)
+  - Network-only for `/api`, `/ws`, `/docs`
+- **Icons**: 4 sizes generated (192/512, standard/maskable)
+- **Service Worker**: Auto-generated, prompt-based updates
+
+### Documentation
+- Added PWA installation guide to README
+- Created `docs/completed/FEATURE_PWA.md`
+- Moved session switcher and debug mode docs to completed folder
+
 ## 2026-02-13 - Debug Mode & Settings
 
 ### New Features

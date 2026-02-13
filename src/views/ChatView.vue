@@ -86,7 +86,9 @@ function getSessionDisplayTitle(session) {
 
 function getSessionUrl(session) {
   // Route format: /project/:project/session/:session
-  const projectSlug = session.projectSlug || session.projectPath?.replace(/\//g, '-').replace(/^-/, '-');
+  const projectSlug =
+    session.projectSlug ||
+    session.projectPath?.replace(/\//g, '-').replace(/^-/, '-');
   return `/project/${projectSlug}/session/${session.sessionId}`;
 }
 

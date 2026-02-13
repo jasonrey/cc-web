@@ -105,6 +105,7 @@ Run `cc-web --help` for all options.
 - **Multi-tab Support** - Session warnings, per-tab isolation
 - **Authentication** - Password protection with session tokens (default enabled)
 - **Auto-Update** - Version checking with one-click upgrade for npm installs
+- **Progressive Web App** - Installable as standalone app, works on desktop and mobile
 
 ### Keyboard Shortcuts
 
@@ -131,6 +132,33 @@ Run `cc-web --help` for all options.
 | `Ctrl+E` | Move cursor to end |
 | `Ctrl+L` | Clear input |
 | `↑` / `↓` | Navigate command history |
+
+---
+
+## Progressive Web App (PWA)
+
+CC Web can be installed as a standalone application on desktop and mobile devices:
+
+### Installing as an App
+
+**Desktop (Chrome/Edge/Brave):**
+1. Open CC Web in your browser
+2. Click the install icon (⊕) in the address bar
+3. Click "Install" in the prompt
+4. Launch from desktop/start menu like any native app
+
+**Mobile (iOS/Android):**
+1. Open CC Web in Safari (iOS) or Chrome (Android)
+2. Tap the Share button (iOS) or Menu (Android)
+3. Select "Add to Home Screen"
+4. Launch from home screen
+
+### Benefits
+
+- **Standalone window** - Runs without browser chrome (no address bar/tabs)
+- **Desktop/dock icon** - Quick launch like native applications
+- **Offline UI** - App shell loads instantly (requires connection for chat)
+- **Better mobile experience** - Full-screen on mobile devices
 
 ---
 

@@ -24,6 +24,7 @@ import { handler as getRecentSessions } from './get-recent-sessions.js';
 import { handler as getSessionTitle } from './get-session-title.js';
 import { handler as getSessions } from './get-sessions.js';
 import { handler as getSettings } from './get-settings.js';
+import { handler as getTaskStatuses } from './get-task-statuses.js';
 import { handler as loadOlderMessages } from './load-older-messages.js';
 import { handler as newSession } from './new-session.js';
 import { handler as prompt } from './prompt.js';
@@ -54,6 +55,7 @@ export const handlers = {
   get_project_status: getProjectStatus,
   get_session_title: getSessionTitle,
   set_session_title: setSessionTitle,
+  get_task_statuses: getTaskStatuses,
   cancel_task: cancelTask,
   'terminal:exec': terminalExec,
   'terminal:kill': terminalKill,

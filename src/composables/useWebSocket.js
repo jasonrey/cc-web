@@ -61,6 +61,8 @@ function connectGlobal(onConnect) {
   globalWs.onopen = () => {
     globalConnected.value = true;
     globalConnectionState.value = 'connected';
+    // Request current task statuses to restore sidebar indicators after page refresh
+    sendGlobal({ type: 'get_task_statuses' });
     // Run all pending callbacks
     const callbacks = onConnectCallbacks;
     onConnectCallbacks = [];
@@ -201,6 +203,22 @@ function handleGlobalMessage(msg) {
         } else if (msg.status === 'idle' || msg.status === 'cancelled') {
           // Clear status for idle/cancelled
           newStatuses.delete(msg.sessionId);
+        }
+        sessionStatuses.value = newStatuses;
+      }
+      break;
+
+    case 'task_statuses':
+      // Restore task statuses on initial load (after page refresh)
+      if (msg.statuses && Array.isArray(msg.statuses)) {
+        const newStatuses = new Map();
+        for (const status of msg.statuses) {
+          if (status.sessionId) {
+            newStatuses.set(status.sessionId, {
+              status: status.status,
+              timestamp: status.timestamp,
+            });
+          }
         }
         sessionStatuses.value = newStatuses;
       }
