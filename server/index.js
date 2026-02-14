@@ -103,6 +103,10 @@ const rootDir = join(__dirname, '..');
 // Load package.json for version
 const pkg = JSON.parse(readFileSync(join(rootDir, 'package.json'), 'utf8'));
 
+// Migrate data from .cc-web to .tofucode (one-time migration)
+const { migrateFromCcWeb } = await import('./lib/migrate-cc-web.js');
+migrateFromCcWeb();
+
 // Initialize version checker
 initVersionChecker(pkg.version);
 
