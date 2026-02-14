@@ -46,7 +46,7 @@ function handleUpgrade() {
   const version = updateAvailable.value?.latestVersion || 'latest';
 
   const confirmed = confirm(
-    `Upgrade cc-web to v${version}?\n\nThis will:\n1. Download and install the update\n2. Restart the server\n3. Automatically reconnect\n\nThis may take 30-60 seconds.`,
+    `Upgrade tofucode to v${version}?\n\nThis will:\n1. Download and install the update\n2. Restart the server\n3. Automatically reconnect\n\nThis may take 30-60 seconds.`,
   );
 
   if (confirmed) {

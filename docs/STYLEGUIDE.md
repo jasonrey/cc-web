@@ -1,6 +1,6 @@
 # UI/UX Styleguide
 
-Comprehensive design system and conventions for cc-web based on existing codebase patterns.
+Comprehensive design system and conventions for tofucode based on existing codebase patterns.
 
 ---
 

@@ -2,7 +2,7 @@ import { appendFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const DEBUG = process.env.DEBUG === 'true';
-const LOG_FILE = join(process.cwd(), 'cc-web.log');
+const LOG_FILE = join(process.cwd(), 'tofucode.log');
 
 /**
  * Format timestamp for log entries

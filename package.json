@@ -1,10 +1,10 @@
 {
-  "name": "cc-web",
+  "name": "tofucode",
   "version": "1.0.0",
   "description": "Web UI for Claude Code - run Claude Agent SDK with a browser interface",
   "type": "module",
   "bin": {
-    "cc-web": "./bin/cli.js"
+    "tofucode": "./bin/cli.js"
   },
   "files": [
     "bin/",

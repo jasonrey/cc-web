@@ -11,7 +11,7 @@ Add a settings modal accessible from the toolbar with a Debug Mode toggle. Debug
 - **Action:** Opens settings modal
 
 ### 2. Settings Modal
-- **Storage:** `.cc-web/settings.json` (user's home directory)
+- **Storage:** `.tofucode/settings.json` (user's home directory)
 - **Auto-save:** Changes saved immediately (no save button)
 - **Close:** X button or click outside modal
 - **Initial setting:** Debug Mode toggle (checkbox)
@@ -36,7 +36,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
-const SETTINGS_DIR = join(homedir(), '.cc-web');
+const SETTINGS_DIR = join(homedir(), '.tofucode');
 const SETTINGS_FILE = join(SETTINGS_DIR, 'settings.json');
 
 // Default settings
@@ -503,7 +503,7 @@ function updateSettings(newSettings) {
 ## Edge Cases
 
 ### 1. Settings File Missing
-- Create `.cc-web` directory if needed
+- Create `.tofucode` directory if needed
 - Use default settings
 
 ### 2. Malformed JSON

@@ -313,7 +313,7 @@ src/
 
 # Config file (user creates)
 mcp-servers.json                  # Project-level MCP config
-~/.cc-web/mcp-servers.json    # Global MCP config
+~/.tofucode/mcp-servers.json    # Global MCP config
 ```
 
 ---

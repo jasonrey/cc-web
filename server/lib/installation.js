@@ -1,7 +1,7 @@
 /**
  * Installation Detection & Upgrade Command Generation
  *
- * Detects how cc-web is installed and determines if auto-upgrade is supported.
+ * Detects how tofucode is installed and determines if auto-upgrade is supported.
  */
 
 import { existsSync } from 'node:fs';
@@ -13,7 +13,7 @@ const __dirname = dirname(__filename);
 const rootDir = join(__dirname, '..', '..');
 
 /**
- * Detect how cc-web is installed
+ * Detect how tofucode is installed
  * @returns {'global'|'local'|'npx'|'docker'|'source'|'unknown'}
  */
 export function getInstallationType() {
@@ -38,7 +38,7 @@ export function getInstallationType() {
 
   // Global vs Local: Check if node_modules exists in parent dirs
   const hasLocalNodeModules = existsSync(
-    join(process.cwd(), 'node_modules', 'cc-web'),
+    join(process.cwd(), 'node_modules', 'tofucode'),
   );
 
   if (hasLocalNodeModules) {
@@ -48,8 +48,8 @@ export function getInstallationType() {
   // Check if installed in global node_modules
   // Global install: process.argv[1] typically in /usr/local/lib/node_modules or similar
   if (
-    process.argv[1]?.includes('/node_modules/cc-web') ||
-    process.argv[1]?.includes('\\node_modules\\cc-web')
+    process.argv[1]?.includes('/node_modules/tofucode') ||
+    process.argv[1]?.includes('\\node_modules\\tofucode')
   ) {
     return 'global';
   }
@@ -78,22 +78,22 @@ export function getUpgradeCommand(version = 'latest') {
 
   switch (type) {
     case 'global':
-      return `npm install -g cc-web@${version}`;
+      return `npm install -g tofucode@${version}`;
 
     case 'local':
-      return `npm install cc-web@${version}`;
+      return `npm install tofucode@${version}`;
 
     case 'npx':
-      return 'npx clear-npx-cache && npx cc-web@latest';
+      return 'npx clear-npx-cache && npx tofucode@latest';
 
     case 'docker':
-      return 'docker pull ghcr.io/yourusername/cc-web:latest && docker restart <container>';
+      return 'docker pull ghcr.io/yourusername/tofucode:latest && docker restart <container>';
 
     case 'source':
       return 'git pull && npm install && npm run build';
 
     default:
-      return 'npm install -g cc-web@latest';
+      return 'npm install -g tofucode@latest';
   }
 }
 

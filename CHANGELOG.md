@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to cc-web (Claude Code Web).
+All notable changes to tofucode (Claude Code Web).
 
 ## 2026-02-14 - CSV Editor, Image Viewer & File Editor Enhancements
 
@@ -43,7 +43,7 @@ All notable changes to cc-web (Claude Code Web).
 ## 2026-02-13 - Debug Mode & Settings
 
 ### New Features
-- **Settings Modal**: Global settings with auto-save, stored in `~/.cc-web/settings.json`
+- **Settings Modal**: Global settings with auto-save, stored in `~/.tofucode/settings.json`
 - **Debug Mode**: Element inspector showing `#id .class` on hover
 
 ### Bug Fixes
@@ -128,7 +128,7 @@ All notable changes to cc-web (Claude Code Web).
 - Files tab explorer with breadcrumb navigation and inline path editing
 - File editor redesign with icon-only buttons
 - Terminal replay button for command history
-- Renamed to cc-web throughout UI
+- Renamed to tofucode throughout UI
 
 ## 2025-02-05 - Model Badges & MCP Integration
 
@@ -143,7 +143,7 @@ All notable changes to cc-web (Claude Code Web).
 
 ## 2025-02-03 - v1.0.0 Release
 
-- Published as npm package (`npx cc-web`)
+- Published as npm package (`npx tofucode`)
 - Model selector (Haiku/Sonnet/Opus)
 - Inline markdown editor with TinyMDE
 - Terminal mode with shell command execution

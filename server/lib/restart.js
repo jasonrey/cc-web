@@ -79,7 +79,7 @@ function getPidFile() {
 
   // Check default location only if we think we're in daemon mode
   // (heuristic: if we were started with detached stdio, likely daemon)
-  const defaultPidFile = join(homedir(), '.cc-web', 'cc-web.pid');
+  const defaultPidFile = join(homedir(), '.tofucode', 'tofucode.pid');
   if (existsSync(defaultPidFile)) {
     return defaultPidFile;
   }

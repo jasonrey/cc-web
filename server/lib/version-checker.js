@@ -1,7 +1,7 @@
 /**
  * Version Checker
  *
- * Periodically checks npm registry for newer versions of cc-web
+ * Periodically checks npm registry for newer versions of tofucode
  * and broadcasts update notifications to all connected clients.
  */
 
@@ -15,7 +15,7 @@ let checkInterval = null;
 const CHECK_INTERVAL =
   Number.parseInt(process.env.UPDATE_CHECK_INTERVAL, 10) || 3600000;
 const DISABLE_CHECK = process.env.DISABLE_UPDATE_CHECK === 'true';
-const PACKAGE_NAME = 'cc-web';
+const PACKAGE_NAME = 'tofucode';
 
 // Debug: Simulate update available (set SIMULATE_UPDATE=1.1.0 to test)
 const SIMULATE_UPDATE = process.env.SIMULATE_UPDATE;

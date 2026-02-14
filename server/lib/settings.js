@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
-const SETTINGS_DIR = join(homedir(), '.cc-web');
+const SETTINGS_DIR = join(homedir(), '.tofucode');
 const SETTINGS_FILE = join(SETTINGS_DIR, 'settings.json');
 
 // Default settings

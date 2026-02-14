@@ -415,7 +415,7 @@ async function startServer() {
 
 function onServerReady() {
   logger.log(
-    `cc-web v${getCurrentVersion()} running on http://localhost:${config.port}`,
+    `tofucode v${getCurrentVersion()} running on http://localhost:${config.port}`,
   );
   logger.log(`WebSocket available at ws://localhost:${config.port}/ws`);
   if (isAuthDisabled()) {
@@ -429,7 +429,7 @@ function onServerReady() {
     logger.log('🎉 Upgrade restart complete!');
   }
   if (process.env.DEBUG === 'true') {
-    logger.log('🐛 DEBUG mode enabled - logging to cc-web.log');
+    logger.log('🐛 DEBUG mode enabled - logging to tofucode.log');
   }
 }
 

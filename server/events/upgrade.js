@@ -1,11 +1,11 @@
 /**
  * One-Click Upgrade Handler
  *
- * Handles automatic upgrade of cc-web package followed by server restart.
+ * Handles automatic upgrade of tofucode package followed by server restart.
  *
  * Flow:
  * 1. Check installation type (global/local npm only)
- * 2. Run npm install -g cc-web@latest (or local variant)
+ * 2. Run npm install -g tofucode@latest (or local variant)
  * 3. Spawn NEW process with UPGRADE_RETRY_BIND=true
  * 4. Old process exits, releasing the port
  * 5. New process's retry succeeds and takes over

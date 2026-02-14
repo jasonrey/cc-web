@@ -10,7 +10,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, '..');
 
 // Default PID file location
-const DEFAULT_PID_FILE = join(homedir(), '.cc-web', 'cc-web.pid');
+const DEFAULT_PID_FILE = join(homedir(), '.tofucode', 'tofucode.pid');
 
 // Parse command line arguments
 const args = process.argv.slice(2);
@@ -19,7 +19,7 @@ const args = process.argv.slice(2);
 if (args.includes('--version') || args.includes('-v')) {
   const pkgPath = join(rootDir, 'package.json');
   const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
-  console.log(`cc-web v${pkg.version}`);
+  console.log(`tofucode v${pkg.version}`);
   process.exit(0);
 }
 
@@ -76,13 +76,13 @@ for (let i = 0; i < args.length; i++) {
     options.bypassToken = args[++i];
   } else if (arg === '--help') {
     console.log(`
-cc-web - Web UI for Claude Code
+tofucode - Web UI for Claude Code
 
 Usage:
-  cc-web [options]
-  cc-web --stop              Stop running daemon
-  cc-web --restart           Restart running daemon
-  cc-web --status            Check daemon status
+  tofucode [options]
+  tofucode --stop              Stop running daemon
+  tofucode --restart           Restart running daemon
+  tofucode --status            Check daemon status
 
 Options:
   -p, --port <port>          Port to listen on (default: 3000)
@@ -91,8 +91,8 @@ Options:
   -d, --daemon               Run as background daemon
   --debug                    Enable debug logging
   -q, --quiet                Suppress output (except errors)
-  --log-file <path>          Custom log file path (default: cc-web.log)
-  --pid-file <path>          Custom PID file path (default: ~/.cc-web/cc-web.pid)
+  --log-file <path>          Custom log file path (default: tofucode.log)
+  --pid-file <path>          Custom PID file path (default: ~/.tofucode/tofucode.pid)
   -c, --config <path>        Load configuration from JSON file
   --bypass-token <token>     Set bypass token for auth-free access (automation/testing)
   -v, --version              Show version number
@@ -125,14 +125,14 @@ Configuration File:
   }
 
 Examples:
-  cc-web                           # Start on http://0.0.0.0:3000
-  cc-web -p 8080                   # Start on port 8080
-  cc-web --no-auth                 # Disable authentication
-  cc-web -d                        # Run as background daemon
-  cc-web -d --debug                # Daemon with debug logging
-  cc-web --config prod.json -d     # Use config file + daemon mode
-  cc-web --stop                    # Stop running daemon
-  cc-web --status                  # Check daemon status
+  tofucode                           # Start on http://0.0.0.0:3000
+  tofucode -p 8080                   # Start on port 8080
+  tofucode --no-auth                 # Disable authentication
+  tofucode -d                        # Run as background daemon
+  tofucode -d --debug                # Daemon with debug logging
+  tofucode --config prod.json -d     # Use config file + daemon mode
+  tofucode --stop                    # Stop running daemon
+  tofucode --status                  # Check daemon status
 `);
     process.exit(0);
   }
@@ -184,7 +184,7 @@ if (options.pidFile) {
 
 // Start the server
 if (!options.quiet) {
-  console.log(`Starting cc-web on http://${options.host}:${options.port}`);
+  console.log(`Starting tofucode on http://${options.host}:${options.port}`);
   if (!options.auth) {
     console.log('Authentication disabled');
   }
@@ -198,7 +198,7 @@ const serverPath = join(rootDir, 'server', 'index.js');
 
 if (options.daemon) {
   // Daemon mode: detached process
-  const logPath = options.logFile ? resolve(options.logFile) : join(process.cwd(), 'cc-web.log');
+  const logPath = options.logFile ? resolve(options.logFile) : join(process.cwd(), 'tofucode.log');
   const { openSync, closeSync, mkdirSync } = await import('fs');
 
   // Ensure PID file directory exists
@@ -229,13 +229,13 @@ if (options.daemon) {
   }
 
   if (!options.quiet) {
-    console.log(`cc-web started as daemon (PID: ${server.pid})`);
+    console.log(`tofucode started as daemon (PID: ${server.pid})`);
     console.log(`Logs: ${logPath}`);
     console.log(`PID file: ${options.pidFile}`);
     console.log(`\nTo manage:`);
-    console.log(`  cc-web --status    # Check status`);
-    console.log(`  cc-web --stop      # Stop daemon`);
-    console.log(`  cc-web --restart   # Restart daemon`);
+    console.log(`  tofucode --status    # Check status`);
+    console.log(`  tofucode --stop      # Stop daemon`);
+    console.log(`  tofucode --restart   # Restart daemon`);
   }
   process.exit(0);
 } else {
@@ -324,7 +324,7 @@ async function handleStop() {
   const pidFile = getPidFile();
 
   if (!existsSync(pidFile)) {
-    console.error('Error: PID file not found. Is cc-web running as daemon?');
+    console.error('Error: PID file not found. Is tofucode running as daemon?');
     console.error(`Expected: ${pidFile}`);
     process.exit(1);
   }
@@ -342,7 +342,7 @@ async function handleStop() {
     }
 
     // Send SIGTERM
-    console.log(`Stopping cc-web (PID: ${pid})...`);
+    console.log(`Stopping tofucode (PID: ${pid})...`);
     process.kill(pid, 'SIGTERM');
 
     // Wait for process to exit (max 10 seconds)
@@ -354,7 +354,7 @@ async function handleStop() {
         attempts++;
       } catch (err) {
         // Process no longer exists
-        console.log('cc-web stopped successfully');
+        console.log('tofucode stopped successfully');
         unlinkSync(pidFile);
         return;
       }
@@ -365,9 +365,9 @@ async function handleStop() {
     process.kill(pid, 'SIGKILL');
     await new Promise(resolve => setTimeout(resolve, 1000));
     unlinkSync(pidFile);
-    console.log('cc-web stopped (forced)');
+    console.log('tofucode stopped (forced)');
   } catch (err) {
-    console.error(`Error: Failed to stop cc-web: ${err.message}`);
+    console.error(`Error: Failed to stop tofucode: ${err.message}`);
     process.exit(1);
   }
 }
@@ -383,7 +383,7 @@ async function handleRestart() {
     console.log('No running daemon found');
   }
 
-  console.log('Starting cc-web...');
+  console.log('Starting tofucode...');
 
   // Re-parse args without --restart and add --daemon
   const newArgs = args.filter(arg => arg !== '--restart');

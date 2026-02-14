@@ -169,7 +169,7 @@ const totalChars = computed(() => {
 });
 
 // MD mode - filter for .md files only, with auto-save
-const mdModeKey = 'cc-web:md-mode';
+const mdModeKey = 'tofucode:md-mode';
 const mdMode = ref(localStorage.getItem(mdModeKey) === 'true');
 
 watch(mdMode, (newValue) => {
@@ -1451,15 +1451,15 @@ watch(
       }
     }
 
-    // Format: project-name / session-title-or-prompt (no cc-web prefix to save space)
+    // Format: project-name / session-title-or-prompt (no tofucode prefix to save space)
     if (projectName && sessionDisplay) {
       document.title = `${projectName} / ${sessionDisplay}`;
     } else if (projectName) {
       document.title = projectName;
     } else if (sessionDisplay) {
-      document.title = `cc-web / ${sessionDisplay}`;
+      document.title = `tofucode / ${sessionDisplay}`;
     } else {
-      document.title = 'cc-web';
+      document.title = 'tofucode';
     }
   },
   { deep: true, immediate: true },

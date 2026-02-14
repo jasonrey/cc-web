@@ -31,7 +31,7 @@ This significantly improves UX by:
 - Clear visual indicator of which files are in context
 - Reduces token waste from unnecessary file content
 
-### Current State in cc-web
+### Current State in tofucode
 
 Currently, users must:
 - Manually reference files by path in their message

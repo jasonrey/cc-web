@@ -290,7 +290,7 @@ npm run start
 - Resizable textarea (drag handle, 60px-400px)
 - Inline markdown editor (TinyMDE) with real-time formatting preview
 - User messages rendered as markdown with permission indicators (colored right border, icon in footer)
-- Dynamic page title: "cc-web - project-name / session-title"
+- Dynamic page title: "tofucode - project-name / session-title"
 
 ### Quick Session Switcher
 - `Ctrl+K` opens command palette from anywhere
@@ -372,9 +372,9 @@ npm run start
 - Security: 10MB file size limit, binary detection, path validation
 
 ### npm Package
-- Published as `cc-web` on npm (renamed from `claude-web`)
+- Published as `tofucode` on npm (renamed from `claude-web`)
 - CLI entry point with `--port`, `--host`, `--no-auth` options
-- Auth data stored in `~/.cc-web/.auth.json` (works with npx)
+- Auth data stored in `~/.tofucode/.auth.json` (works with npx)
 - Frontend pre-built in `dist/` folder
 
 ### MCP Integration

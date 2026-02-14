@@ -70,7 +70,7 @@ npm run check
 - **Server Restart Policy:**
   - **Always get user consent** before restarting the server
   - Exception: Small, safe, low-risk changes where auto-restart is explicitly permitted
-  - When permitted, use: `npx cc-web --restart --port 3001 --bypass-token <token>`
+  - When permitted, use: `npx tofucode --restart --port 3001 --bypass-token <token>`
   - Backend must remain resilient for testing; user manages server lifecycle
 
 ### Code Style

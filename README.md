@@ -1,4 +1,4 @@
-# cc-web
+# tofucode
 
 Web UI for Claude Code with full system access. Run Claude through a browser interface on remote VMs, servers, or local machines.
 
@@ -8,11 +8,11 @@ Web UI for Claude Code with full system access. Run Claude through a browser int
 
 ```bash
 # Run directly with npx (recommended)
-npx cc-web
+npx tofucode
 
 # Or install globally
-npm install -g cc-web
-cc-web
+npm install -g tofucode
+tofucode
 ```
 
 Open http://localhost:3000 and start chatting.
@@ -36,7 +36,7 @@ Follow the [Claude Code installation guide](https://github.com/anthropics/claude
 ### 2. First Run
 
 ```bash
-npx cc-web
+npx tofucode
 ```
 
 On first run:
@@ -51,33 +51,33 @@ On first run:
 
 ```bash
 # Start server
-cc-web
+tofucode
 
 # Custom port and host
-cc-web -p 8080 -h 127.0.0.1
+tofucode -p 8080 -h 127.0.0.1
 
 # Run as daemon
-cc-web -d
+tofucode -d
 
 # Stop/restart/status
-cc-web --stop
-cc-web --restart
-cc-web --status
+tofucode --stop
+tofucode --restart
+tofucode --status
 
 # Use config file
-cc-web --config prod.json
+tofucode --config prod.json
 
 # See all options
-cc-web --help
+tofucode --help
 ```
 
 ### Configuration
 
 **Three ways to configure (priority order):**
 
-1. **CLI arguments:** `cc-web -p 8080 --debug`
-2. **Config file:** `cc-web --config prod.json` (see `config.example.json`)
-3. **Environment variables:** `PORT=8080 DEBUG=true cc-web`
+1. **CLI arguments:** `tofucode -p 8080 --debug`
+2. **Config file:** `tofucode --config prod.json` (see `config.example.json`)
+3. **Environment variables:** `PORT=8080 DEBUG=true tofucode`
 
 | Setting | CLI | Config | Env Var |
 |---------|-----|--------|---------|
@@ -91,7 +91,7 @@ cc-web --help
 | Disable update check | - | - | `DISABLE_UPDATE_CHECK=true` |
 | Update check interval | - | - | `UPDATE_CHECK_INTERVAL=3600000` |
 
-Run `cc-web --help` for all options.
+Run `tofucode --help` for all options.
 
 ---
 
@@ -139,7 +139,7 @@ Run `cc-web --help` for all options.
 
 ## Settings
 
-Access settings via the gear icon in the sidebar. Settings are persisted in `~/.cc-web/settings.json`.
+Access settings via the gear icon in the sidebar. Settings are persisted in `~/.tofucode/settings.json`.
 
 **Available Settings:**
 
@@ -191,7 +191,7 @@ The PWA uses service workers to detect when the frontend code changes:
 3. **One-click update** - Click "Update" to activate the new version instantly
 4. **Content-addressed caching** - Any JS/CSS change triggers an update notification
 
-The PWA updates independently from the backend npm package. For full updates (backend + frontend), use `cc-web --upgrade` or the upgrade button in settings.
+The PWA updates independently from the backend npm package. For full updates (backend + frontend), use `tofucode --upgrade` or the upgrade button in settings.
 
 ---
 
@@ -200,7 +200,7 @@ The PWA updates independently from the backend npm package. For full updates (ba
 - **Authentication enabled by default** - Set password on first run
 - Use `--no-auth` only on trusted/local networks
 - Sessions stored locally in `~/.claude/projects/`
-- Auth data in `~/.cc-web/.auth.json`
+- Auth data in `~/.tofucode/.auth.json`
 - Full system access matching Claude Code permissions
 
 ---
@@ -212,7 +212,7 @@ The PWA updates independently from the backend npm package. For full updates (ba
 ```bash
 # Clone repository
 git clone <repo-url>
-cd cc-web
+cd tofucode
 
 # Install dependencies
 npm install

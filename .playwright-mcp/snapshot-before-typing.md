@@ -1,10 +1,10 @@
 - generic [ref=e3]:
   - complementary [ref=e4]:
     - generic [ref=e5]:
-      - link "cc-web" [ref=e6] [cursor=pointer]:
+      - link "tofucode" [ref=e6] [cursor=pointer]:
         - /url: /
         - img [ref=e7]
-        - generic [ref=e17]: cc-web
+        - generic [ref=e17]: tofucode
       - generic [ref=e18]: v1.0.0
       - button "Restart server" [ref=e19] [cursor=pointer]:
         - img [ref=e20]
@@ -13,14 +13,14 @@
       - button "Projects" [ref=e26] [cursor=pointer]
     - list [ref=e28]:
       - listitem [ref=e29]:
-        - link "cc-web cc-web·just now" [ref=e30] [cursor=pointer]:
-          - /url: /project/-home-ts-projects-cc-web/session/14befc3a-bf07-4b36-ae84-29b28b45c86d
+        - link "tofucode tofucode·just now" [ref=e30] [cursor=pointer]:
+          - /url: /project/-home-ts-projects-tofucode/session/14befc3a-bf07-4b36-ae84-29b28b45c86d
           - img [ref=e32]
           - generic [ref=e34]:
-            - paragraph [ref=e35]: cc-web
+            - paragraph [ref=e35]: tofucode
             - paragraph [ref=e36]:
-              - link "cc-web" [ref=e37]:
-                - /url: /project/-home-ts-projects-cc-web
+              - link "tofucode" [ref=e37]:
+                - /url: /project/-home-ts-projects-tofucode
               - text: ·just now
       - listitem [ref=e38]:
         - link "dashboard dashboard·3h ago" [ref=e39] [cursor=pointer]:
@@ -53,14 +53,14 @@
                 - /url: /project/-home-ts-projects-anime-service
               - text: ·1d ago
       - listitem [ref=e65]:
-        - link "let's add a DEBUG=false env, where if it is true, we should tee the output logs to a file, either tm cc-web·2d ago" [ref=e66] [cursor=pointer]:
-          - /url: /project/-home-ts-projects-cc-web/session/3a2b6a36-f8f6-4c99-8080-7a35b26ec9d6
+        - link "let's add a DEBUG=false env, where if it is true, we should tee the output logs to a file, either tm tofucode·2d ago" [ref=e66] [cursor=pointer]:
+          - /url: /project/-home-ts-projects-tofucode/session/3a2b6a36-f8f6-4c99-8080-7a35b26ec9d6
           - img [ref=e68]
           - generic [ref=e70]:
             - paragraph [ref=e71]: let's add a DEBUG=false env, where if it is true, we should tee the output logs to a file, either tm
             - paragraph [ref=e72]:
-              - link "cc-web" [ref=e73]:
-                - /url: /project/-home-ts-projects-cc-web
+              - link "tofucode" [ref=e73]:
+                - /url: /project/-home-ts-projects-tofucode
               - text: ·2d ago
       - listitem [ref=e74]:
         - link "for actions like comment_* and post_upvote, analyze and confirm that currently it only grants users. social-service·4d ago" [ref=e75] [cursor=pointer]:
@@ -518,8 +518,8 @@
         - button [ref=e483] [cursor=pointer]:
           - img [ref=e484]
         - generic [ref=e486]:
-          - link "cc-web" [ref=e487] [cursor=pointer]:
-            - /url: /project/-home-ts-projects-cc-web
+          - link "tofucode" [ref=e487] [cursor=pointer]:
+            - /url: /project/-home-ts-projects-tofucode
           - generic [ref=e488]: /
           - generic [ref=e489]: New session
       - generic [ref=e493]: Connected

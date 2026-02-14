@@ -42,7 +42,7 @@ export function handleWebSocket(ws) {
       type: 'update_available',
       currentVersion,
       latestVersion,
-      updateUrl: 'https://www.npmjs.com/package/cc-web',
+      updateUrl: 'https://www.npmjs.com/package/tofucode',
     });
   }
 
