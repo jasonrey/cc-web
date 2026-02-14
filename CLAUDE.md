@@ -39,7 +39,7 @@ claude-code-web/
 - `README.md` - User-facing documentation (setup, usage, contribute)
 - `CLAUDE.md` - Developer workflow and guidelines (this file)
 - `PLAN.md` - High-level task tracking and project roadmap
-- `CHANGELOG.md` - Short release notes (date-based pre-1.0, version-based post-1.0)
+- `CHANGELOG.md` - Version-based release notes following [Keep a Changelog](https://keepachangelog.com/) format
 
 **`docs/` Folder:**
 - `FEATURE_*.md` - Active feature planning and status documents
