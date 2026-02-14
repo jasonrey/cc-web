@@ -1,4 +1,0 @@
-- csv editor
-- image viewer
-- reduce session quick selector's padding
-- editor symbol should insert and refocus existing cursor position
