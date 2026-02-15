@@ -81,25 +81,21 @@ const shortcuts = [
       </div>
 
       <div class="shortcuts-container">
-        <div v-for="section in shortcuts" :key="section.category" class="shortcuts-section">
-          <h3 class="section-title">{{ section.category }}</h3>
-          <div class="shortcuts-list">
-            <div v-for="(shortcut, index) in section.items" :key="index" class="shortcut-row">
-              <div class="shortcut-keys">
+        <table class="shortcuts-table">
+          <tbody v-for="section in shortcuts" :key="section.category">
+            <tr class="section-header">
+              <td colspan="2">{{ section.category }}</td>
+            </tr>
+            <tr v-for="(shortcut, index) in section.items" :key="index" class="shortcut-row">
+              <td class="shortcut-keys">
                 <kbd v-for="(key, i) in shortcut.keys" :key="i" class="key">
                   {{ key }}
                 </kbd>
-              </div>
-              <div class="shortcut-description">{{ shortcut.description }}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <p class="footer-note">
-          Press <kbd class="key">?</kbd> to toggle this dialog
-        </p>
+              </td>
+              <td class="shortcut-description">{{ shortcut.description }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -169,88 +165,69 @@ const shortcuts = [
 .shortcuts-container {
   flex: 1;
   overflow-y: auto;
-  padding: 24px;
+  padding: 0;
 }
 
-.shortcuts-section {
-  margin-bottom: 32px;
+.shortcuts-table {
+  width: 100%;
+  border-collapse: collapse;
 }
 
-.shortcuts-section:last-child {
-  margin-bottom: 0;
-}
-
-.section-title {
-  font-size: 14px;
+.section-header td {
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  margin: 0 0 12px 0;
+  padding: 16px 20px 8px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
 }
 
-.shortcuts-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.shortcuts-table tbody:first-child .section-header td {
+  padding-top: 12px;
 }
 
 .shortcut-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 12px;
-  background: var(--bg-tertiary);
-  border-radius: 6px;
-  gap: 16px;
+  transition: background 0.15s;
+}
+
+.shortcut-row:hover {
+  background: var(--bg-hover);
+}
+
+.shortcut-row td {
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .shortcut-keys {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 140px;
-  flex-shrink: 0;
+  width: 180px;
+  white-space: nowrap;
 }
 
-.key {
+.shortcut-keys .key {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 28px;
-  height: 24px;
-  padding: 0 8px;
-  background: var(--bg-primary);
+  min-width: 24px;
+  height: 22px;
+  padding: 0 6px;
+  margin-right: 4px;
+  background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
-  border-radius: 4px;
+  border-radius: 3px;
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   color: var(--text-primary);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1);
 }
 
 .shortcut-description {
-  flex: 1;
-  font-size: 14px;
-  color: var(--text-primary);
-}
-
-.modal-footer {
-  padding: 16px 24px;
-  border-top: 1px solid var(--border-color);
-  background: var(--bg-tertiary);
-}
-
-.footer-note {
-  margin: 0;
   font-size: 13px;
-  color: var(--text-secondary);
-  text-align: center;
-}
-
-.footer-note .key {
-  margin: 0 4px;
+  color: var(--text-primary);
+  line-height: 1.4;
 }
 
 /* Mobile responsive */
@@ -266,14 +243,22 @@ const shortcuts = [
     border-radius: 12px 12px 0 0;
   }
 
-  .shortcut-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
+  .section-header td {
+    padding: 12px 16px 6px;
+  }
+
+  .shortcut-row td {
+    padding: 8px 16px;
   }
 
   .shortcut-keys {
-    min-width: auto;
+    width: auto;
+    display: block;
+    padding-bottom: 4px;
+  }
+
+  .shortcut-description {
+    font-size: 12px;
   }
 }
 
