@@ -748,8 +748,9 @@ watch(
       // Reload terminal processes AFTER session selection to avoid race condition
       // Terminal processes are project-scoped, so this ensures the response
       // arrives after session_selected is processed
+      // Use nextTick to ensure project_selected message is processed first
       if (shouldReloadTerminal) {
-        listProcesses();
+        nextTick(() => listProcesses());
       }
     }
   },
