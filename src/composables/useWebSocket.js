@@ -237,17 +237,20 @@ function handleGlobalMessage(msg) {
         for (const [projectSlug, count] of Object.entries(msg.terminalCounts)) {
           newCounts.set(projectSlug, count);
         }
+        console.log('[task_statuses] Initial terminal counts:', Object.fromEntries(newCounts));
         terminalCounts.value = newCounts;
       }
       break;
 
     case 'terminal_counts':
       // Update terminal counts (broadcast from server when processes start/exit)
+      console.log('[terminal_counts] Received:', msg.terminalCounts);
       if (msg.terminalCounts && typeof msg.terminalCounts === 'object') {
         const newCounts = new Map();
         for (const [projectSlug, count] of Object.entries(msg.terminalCounts)) {
           newCounts.set(projectSlug, count);
         }
+        console.log('[terminal_counts] Updated counts:', Object.fromEntries(newCounts));
         terminalCounts.value = newCounts;
       }
       break;
