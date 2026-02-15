@@ -6,6 +6,8 @@ Web UI for Claude Code with full system access. Run Claude through a browser int
 
 ## Quick Start
 
+### NPM
+
 ```bash
 # Run directly with npx (recommended)
 npx tofucode
@@ -16,6 +18,30 @@ tofucode
 ```
 
 Open http://localhost:3000 and start chatting.
+
+### Docker
+
+```bash
+# Pull and run
+docker run -d \
+  -p 3000:3000 \
+  -e ANTHROPIC_API_KEY=your_key_here \
+  -v $(pwd):/workspace \
+  picotofu/tofucode:latest
+
+# Open http://localhost:3000
+```
+
+**Mount Points:**
+- `/home/appuser/.claude/.credentials.json` - required - API credentials (isolated, recommended)
+- `/home/appuser/.claude` - required - full Claude config (alternative, for host interop)
+- `ANTHROPIC_API_KEY` env var - required - API key (alternative)
+- `/workspace` - optional - project directory
+- `/home/appuser/.tofucode` - optional - auth, settings, state storage
+
+**Note:** Only one API authentication method is required (credentials file, full `.claude` folder, or env var)
+
+See [Docker Guide](./docs/DOCKER.md) for all configuration options.
 
 ---
 
@@ -64,6 +90,9 @@ tofucode --stop
 tofucode --restart
 tofucode --status
 
+# Restrict access to a specific directory
+tofucode --root /path/to/project
+
 # Use config file
 tofucode --config prod.json
 
@@ -88,10 +117,45 @@ tofucode --help
 | Debug | `--debug` | `"debug": true` | `DEBUG=true` |
 | Log file | `--log-file <path>` | `"logFile": "<path>"` | `LOG_FILE=<path>` |
 | Bypass token | `--bypass-token <token>` | `"bypassToken": "<token>"` | `DEBUG_TOKEN=<token>` |
+| Root path | `--root <path>` | `"root": "<path>"` | `ROOT_PATH=<path>` |
 | Disable update check | - | - | `DISABLE_UPDATE_CHECK=true` |
 | Update check interval | - | - | `UPDATE_CHECK_INTERVAL=3600000` |
 
 Run `tofucode --help` for all options.
+
+### Security: Root Path Restriction
+
+Use `--root` to restrict file and terminal access to a specific directory:
+
+```bash
+tofucode --root /home/user/projects/myapp
+```
+
+**What it does:**
+- Limits Files tab navigation to the specified directory
+- Validates terminal working directory (best effort)
+- Filters project/session lists to only show items within the root
+- Displays a "Restricted Mode" banner on the homepage
+
+**⚠️ Important: Best Effort Basis**
+
+The `--root` restriction is **not foolproof**:
+- File access is strictly validated ✅
+- Terminal CWD is validated ✅
+- But users can still run commands like `cat /etc/passwd` or `cd /` ⚠️
+
+**For full isolation, use Docker:**
+
+```bash
+docker run -d \
+  -p 3000:3000 \
+  -e ANTHROPIC_API_KEY=your_key_here \
+  -e ROOT_PATH=/workspace \
+  -v /path/to/project:/workspace \
+  picotofu/tofucode:latest --root /workspace
+```
+
+Docker provides OS-level isolation that cannot be bypassed. See the [Docker Guide](./docs/DOCKER.md) for flexible volume mounting strategies.
 
 ---
 
@@ -158,18 +222,18 @@ Access settings via the gear icon in the sidebar. Settings are persisted in `~/.
 
 ## Progressive Web App (PWA)
 
-CC Web can be installed as a standalone application on desktop and mobile devices:
+tofucode can be installed as a standalone application on desktop and mobile devices:
 
 ### Installing as an App
 
 **Desktop (Chrome/Edge/Brave):**
-1. Open CC Web in your browser
+1. Open tofucode in your browser
 2. Click the install icon (⊕) in the address bar
 3. Click "Install" in the prompt
 4. Launch from desktop/start menu like any native app
 
 **Mobile (iOS/Android):**
-1. Open CC Web in Safari (iOS) or Chrome (Android)
+1. Open tofucode in Safari (iOS) or Chrome (Android)
 2. Tap the Share button (iOS) or Menu (Android)
 3. Select "Add to Home Screen"
 4. Launch from home screen

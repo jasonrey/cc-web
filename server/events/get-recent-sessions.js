@@ -31,7 +31,7 @@
  */
 
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 import { config, getProjectDisplayName, slugToPath } from '../config.js';
 import { logger } from '../lib/logger.js';
 import { loadTitles } from '../lib/session-titles.js';
@@ -57,6 +57,21 @@ export function handler(ws, message) {
         const indexPath = join(sessionsDir, 'sessions-index.json');
         const projectName = getProjectDisplayName(projectSlug);
         const projectPath = slugToPath(projectSlug);
+
+        // If --root is set, skip projects outside root
+        if (config.rootPath) {
+          const resolvedProject = resolve(projectPath);
+          const resolvedRoot = resolve(config.rootPath);
+          const relativePath = relative(resolvedRoot, resolvedProject);
+
+          // Skip projects outside root
+          if (
+            relativePath.startsWith('..') ||
+            resolve(relativePath).startsWith('..')
+          ) {
+            continue;
+          }
+        }
 
         // Load custom titles from .session-titles.json (SDK-safe storage)
         const titles = loadTitles(projectSlug);

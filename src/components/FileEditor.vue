@@ -115,6 +115,81 @@ const fileName = computed(() => {
   return props.filePath.split('/').pop();
 });
 
+// Parse markdown headings for TOC
+const markdownHeadings = computed(() => {
+  if (fileType.value !== 'markdown' || !editorContent.value) return [];
+
+  const lines = editorContent.value.split('\n');
+  const headings = [];
+  let lineNumber = 0;
+
+  for (const line of lines) {
+    lineNumber++;
+    const match = line.match(/^(#{1,6})\s+(.+)$/);
+    if (match) {
+      const level = match[1].length;
+      const text = match[2].trim();
+      headings.push({
+        level,
+        text,
+        line: lineNumber,
+        id: text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-'),
+      });
+    }
+  }
+
+  return headings;
+});
+
+const showToc = computed(() => {
+  return fileType.value === 'markdown' && markdownHeadings.value.length > 0;
+});
+
+// Scroll to heading
+function scrollToHeading(heading) {
+  // The scrollable container is the .markdown-editor div
+  const container = mdEditorRef.value;
+  if (!container) return;
+
+  // TinyMDE uses contenteditable div, not textarea
+  const tinyMDEElement = container.querySelector('.TinyMDE');
+  if (!tinyMDEElement) return;
+
+  // Use nextTick to ensure DOM is updated
+  nextTick(() => {
+    // Get all child elements (each line/block is a separate element)
+    const children = Array.from(tinyMDEElement.children);
+
+    // Find the child element at or near the target line
+    // Each block element (heading, paragraph, etc.) can span multiple lines
+    let targetElement = null;
+    let currentLine = 1;
+
+    for (const child of children) {
+      const text = child.textContent || '';
+      const lineCount = text.split('\n').length;
+
+      if (currentLine + lineCount > heading.line) {
+        targetElement = child;
+        break;
+      }
+      currentLine += lineCount;
+    }
+
+    // If we found the target element, scroll to it
+    if (targetElement) {
+      const elementTop = targetElement.offsetTop;
+      const viewportHeight = container.clientHeight;
+      const scrollTop = Math.max(0, elementTop - viewportHeight / 3);
+
+      container.scroll({
+        top: scrollTop,
+        behavior: 'smooth'
+      });
+    }
+  });
+}
+
 // Watch for content changes from parent (new file loaded)
 watch(
   () => props.content,
@@ -313,7 +388,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="file-editor">
+  <div class="file-editor" :class="{ 'with-toc': showToc }">
     <!-- Editor content -->
     <div class="editor-content">
       <div v-if="loading" class="editor-loading">Loading...</div>
@@ -352,6 +427,23 @@ onUnmounted(() => {
       </template>
     </div>
 
+    <!-- Table of Contents (Markdown only) -->
+    <div v-if="showToc" class="toc-sidebar">
+      <div class="toc-header">Contents</div>
+      <div class="toc-list">
+        <button
+          v-for="heading in markdownHeadings"
+          :key="heading.line"
+          class="toc-item"
+          :class="`toc-level-${heading.level}`"
+          @click="scrollToHeading(heading)"
+          :title="heading.text"
+        >
+          {{ heading.text }}
+        </button>
+      </div>
+    </div>
+
     <!-- Symbol toolbar (not shown for CSV or image files) -->
     <div v-if="!loading && fileType !== 'csv' && fileType !== 'image'" class="symbol-toolbar">
       <button
@@ -375,6 +467,29 @@ onUnmounted(() => {
   flex-direction: column;
   height: 100%;
   background: var(--bg-primary);
+  position: relative;
+}
+
+.file-editor.with-toc {
+  display: grid;
+  grid-template-columns: 1fr 240px;
+  grid-template-rows: 1fr auto;
+}
+
+.file-editor.with-toc .editor-content {
+  grid-column: 1;
+  grid-row: 1;
+  border-right: 1px solid var(--border-color);
+}
+
+.file-editor.with-toc .toc-sidebar {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.file-editor.with-toc .symbol-toolbar {
+  grid-column: 1 / -1;
+  grid-row: 2;
 }
 
 .editor-content {
@@ -511,6 +626,83 @@ onUnmounted(() => {
   background: var(--bg-tertiary);
   color: var(--text-primary);
   border-color: var(--text-muted);
+}
+
+/* Table of Contents sidebar */
+.toc-sidebar {
+  width: 240px;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+.toc-header {
+  padding: 12px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.toc-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.toc-item {
+  width: 100%;
+  padding: 6px 16px;
+  text-align: left;
+  font-size: 13px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.toc-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* Indentation based on heading level */
+.toc-item.toc-level-1 {
+  padding-left: 16px;
+  font-weight: 600;
+}
+
+.toc-item.toc-level-2 {
+  padding-left: 24px;
+}
+
+.toc-item.toc-level-3 {
+  padding-left: 32px;
+  font-size: 12px;
+}
+
+.toc-item.toc-level-4 {
+  padding-left: 40px;
+  font-size: 12px;
+}
+
+.toc-item.toc-level-5 {
+  padding-left: 48px;
+  font-size: 11px;
+}
+
+.toc-item.toc-level-6 {
+  padding-left: 56px;
+  font-size: 11px;
 }
 
 .symbol-btn:active {

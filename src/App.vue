@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, onUnmounted, provide, ref } from 'vue';
 import CommandPalette from './components/CommandPalette.vue';
+import KeyboardShortcutsModal from './components/KeyboardShortcutsModal.vue';
 import PwaPrompt from './components/PwaPrompt.vue';
 import SettingsModal from './components/SettingsModal.vue';
 import Sidebar from './components/Sidebar.vue';
@@ -21,6 +22,7 @@ const settings = ref({
   debugMode: false,
   autoSaveFiles: true,
   symbolToolbar: '` ~ ! @ # $ % ^ & * ( ) - _ = + /',
+  quickAccessFile: 'TODO.md',
 });
 
 function openSettings() {
@@ -29,6 +31,17 @@ function openSettings() {
 
 function closeSettings() {
   showSettings.value = false;
+}
+
+// Help modal state
+const showHelp = ref(false);
+
+function openHelp() {
+  showHelp.value = true;
+}
+
+function closeHelp() {
+  showHelp.value = false;
 }
 
 function updateSettings(newSettings) {
@@ -69,6 +82,11 @@ function handleGlobalKeydown(e) {
   if ((e.ctrlKey || e.metaKey) && e.key === ',') {
     e.preventDefault();
     openSettings();
+  }
+  // Ctrl+? or Cmd+? or Ctrl+/ or Cmd+/: Show keyboard shortcuts
+  if ((e.ctrlKey || e.metaKey) && (e.key === '?' || e.key === '/')) {
+    e.preventDefault();
+    showHelp.value = !showHelp.value;
   }
 }
 
@@ -111,6 +129,7 @@ provide('settings', {
   debugMode: () => settings.value.debugMode,
   autoSaveFiles: () => settings.value.autoSaveFiles,
   symbolToolbar: () => settings.value.symbolToolbar,
+  quickAccessFile: () => settings.value.quickAccessFile,
 });
 
 onMounted(() => {
@@ -129,7 +148,7 @@ onUnmounted(() => {
 
 <template>
   <div class="app" :class="{ 'sidebar-open': sidebarOpen }">
-    <Sidebar :open="sidebarOpen" @close="closeSidebar" @open-settings="openSettings" />
+    <Sidebar :open="sidebarOpen" @close="closeSidebar" @open-settings="openSettings" @open-help="openHelp" />
     <div class="app-main">
       <router-view />
     </div>
@@ -143,6 +162,10 @@ onUnmounted(() => {
       :settings="settings"
       @close="closeSettings"
       @update="updateSettings"
+    />
+    <KeyboardShortcutsModal
+      v-if="showHelp"
+      @close="closeHelp"
     />
     <PwaPrompt />
   </div>

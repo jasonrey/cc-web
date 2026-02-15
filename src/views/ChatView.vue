@@ -1164,6 +1164,71 @@ function handleFileSelect(file) {
   });
 }
 
+// Quick access modal/sidebar state
+const quickAccessOpen = ref(false);
+const quickAccessFile = ref(null); // { path, content, loading }
+let quickAccessAttempt = null;
+
+function openQuickAccessFile() {
+  const filename = settingsContext?.quickAccessFile?.();
+  if (!filename || !projectStatus.value?.cwd) {
+    return;
+  }
+
+  // Construct full path (assuming file is in project root)
+  const fullPath = `${projectStatus.value.cwd}/${filename}`;
+
+  // Mark this as a quick access attempt
+  quickAccessAttempt = fullPath;
+
+  // Open the modal/sidebar
+  quickAccessOpen.value = true;
+  quickAccessFile.value = { path: fullPath, content: '', loading: true };
+
+  // Request file content
+  send({
+    type: 'files:read',
+    path: fullPath,
+  });
+}
+
+function closeQuickAccess() {
+  quickAccessOpen.value = false;
+  quickAccessFile.value = null;
+  quickAccessAttempt = null;
+}
+
+function handleQuickAccessSave(data) {
+  send({
+    type: 'files:write',
+    path: data.path,
+    content: data.content,
+  });
+}
+
+const quickAccessFileName = computed(() => {
+  if (!quickAccessFile.value?.path) return '';
+  return quickAccessFile.value.path.split('/').pop();
+});
+
+const quickAccessFileSize = computed(() => {
+  if (!quickAccessFile.value?.content) return '0 B';
+  const bytes = new Blob([quickAccessFile.value.content]).size;
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+});
+
+const quickAccessTotalLines = computed(() => {
+  if (!quickAccessFile.value?.content) return 0;
+  return quickAccessFile.value.content.split('\n').length;
+});
+
+const quickAccessTotalChars = computed(() => {
+  if (!quickAccessFile.value?.content) return 0;
+  return quickAccessFile.value.content.length;
+});
+
 function handleFileSave(data) {
   send({
     type: 'files:write',
@@ -1339,6 +1404,7 @@ function handleFileMessage(msg) {
       filesLoading.value = false;
       break;
     case 'files:read:result':
+      // Handle regular file editor
       if (openedFile.value && openedFile.value.path === msg.path) {
         openedFile.value = {
           path: msg.path,
@@ -1346,10 +1412,50 @@ function handleFileMessage(msg) {
           loading: false,
         };
       }
+      // Handle quick access file
+      if (quickAccessFile.value && quickAccessFile.value.path === msg.path) {
+        quickAccessFile.value = {
+          path: msg.path,
+          content: msg.content,
+          loading: false,
+        };
+        // Clear quick access attempt flag on success
+        if (quickAccessAttempt === msg.path) {
+          quickAccessAttempt = null;
+        }
+      }
       break;
     case 'files:read:error':
       console.error('Read error:', msg.error);
-      if (openedFile.value) {
+      // If this was a quick access file that doesn't exist, create it
+      if (
+        quickAccessAttempt &&
+        quickAccessFile.value?.path === quickAccessAttempt
+      ) {
+        const path = quickAccessAttempt;
+        quickAccessAttempt = null; // Clear the attempt flag
+        // Create the file with empty content
+        send({
+          type: 'files:write',
+          path: path,
+          content: '',
+        });
+        // Open the newly created file in quick access
+        quickAccessFile.value = { path: path, content: '', loading: false };
+      } else if (
+        quickAccessAttempt &&
+        openedFile.value?.path === quickAccessAttempt
+      ) {
+        // Legacy: handle old quick access logic for regular file editor
+        const path = quickAccessAttempt;
+        quickAccessAttempt = null;
+        send({
+          type: 'files:write',
+          path: path,
+          content: '',
+        });
+        openedFile.value = { path: path, content: '', loading: false };
+      } else if (openedFile.value) {
         openedFile.value = null;
       }
       break;
@@ -1706,7 +1812,70 @@ watch(
     </div>
 
     <footer class="footer">
-      <!-- Toolbar (at top) -->
+      <!-- Files explorer header (only in files mode) - moved above toolbar -->
+      <div v-if="currentMode === 'files'" class="files-explorer-header">
+        <div class="files-breadcrumb">
+          <button
+            class="breadcrumb-btn"
+            @click="goUpDirectory"
+            :disabled="!filesCurrentPath || filesCurrentPath === '/'"
+            title="Go up"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+          </button>
+          <button
+            class="breadcrumb-btn"
+            @click="projectStatus.cwd && handleFilesNavigate(projectStatus.cwd)"
+            :disabled="!projectStatus.cwd || filesCurrentPath === projectStatus.cwd"
+            title="Go to project root"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </button>
+          <!-- Path editing inline input -->
+          <form v-if="fileModals.editPath" class="breadcrumb-edit-form" @submit.prevent="confirmEditPath">
+            <input
+              ref="pathEditInputRef"
+              type="text"
+              v-model="fileModals.editPathValue"
+              class="breadcrumb-edit-input"
+              placeholder="/path/to/folder"
+              @keydown.escape.prevent="cancelEditPath"
+              @blur="cancelEditPath"
+            />
+          </form>
+          <!-- Path display with breadcrumbs -->
+          <div v-else class="breadcrumb-scroll" @click="handleEditPath">
+            <span class="breadcrumb-path">
+              <template v-if="!filesCurrentPath || filesCurrentPath === '/'">/</template>
+              <template v-else>
+                <span
+                  v-for="(crumb, index) in filesBreadcrumbs"
+                  :key="index"
+                  class="breadcrumb-item"
+                >
+                  <span class="breadcrumb-separator">/</span>
+                  <button class="breadcrumb-link" @click.stop="handleFilesNavigate(crumb.path)">
+                    {{ crumb.name }}
+                  </button>
+                </span>
+              </template>
+            </span>
+          </div>
+          <button v-if="!fileModals.editPath" class="breadcrumb-btn" @click="handleEditPath" title="Edit path">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Toolbar -->
       <div class="toolbar">
         <div class="toolbar-left">
           <span
@@ -1743,9 +1912,8 @@ watch(
             title="Show dotfiles"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
               <circle cx="12" cy="12" r="1"/>
-              <circle cx="12" cy="5" r="1"/>
-              <circle cx="12" cy="19" r="1"/>
             </svg>
           </button>
           <button
@@ -1871,70 +2039,19 @@ watch(
                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
               </svg>
             </button>
+            <!-- Quick access file button (beside permission tabs) -->
+            <button
+              v-if="settingsContext?.quickAccessFile?.()"
+              class="quick-access-btn"
+              @click="openQuickAccessFile"
+              :title="`Quick access: ${settingsContext.quickAccessFile()}`"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20h9"/>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+              </svg>
+            </button>
           </div>
-        </div>
-      </div>
-
-      <!-- Files explorer header (only in files mode) -->
-      <div v-if="currentMode === 'files'" class="files-explorer-header">
-        <div class="files-breadcrumb">
-          <button
-            class="breadcrumb-btn"
-            @click="goUpDirectory"
-            :disabled="!filesCurrentPath || filesCurrentPath === '/'"
-            title="Go up"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M19 12H5M12 19l-7-7 7-7"/>
-            </svg>
-          </button>
-          <button
-            class="breadcrumb-btn"
-            @click="projectStatus.cwd && handleFilesNavigate(projectStatus.cwd)"
-            :disabled="!projectStatus.cwd || filesCurrentPath === projectStatus.cwd"
-            title="Go to project root"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-              <polyline points="9 22 9 12 15 12 15 22"/>
-            </svg>
-          </button>
-          <!-- Path editing inline input -->
-          <form v-if="fileModals.editPath" class="breadcrumb-edit-form" @submit.prevent="confirmEditPath">
-            <input
-              ref="pathEditInputRef"
-              type="text"
-              v-model="fileModals.editPathValue"
-              class="breadcrumb-edit-input"
-              placeholder="/path/to/folder"
-              @keydown.escape.prevent="cancelEditPath"
-              @blur="cancelEditPath"
-            />
-          </form>
-          <!-- Path display with breadcrumbs -->
-          <div v-else class="breadcrumb-scroll" @click="handleEditPath">
-            <span class="breadcrumb-path">
-              <template v-if="!filesCurrentPath || filesCurrentPath === '/'">/</template>
-              <template v-else>
-                <span
-                  v-for="(crumb, index) in filesBreadcrumbs"
-                  :key="index"
-                  class="breadcrumb-item"
-                >
-                  <span class="breadcrumb-separator">/</span>
-                  <button class="breadcrumb-link" @click.stop="handleFilesNavigate(crumb.path)">
-                    {{ crumb.name }}
-                  </button>
-                </span>
-              </template>
-            </span>
-          </div>
-          <button v-if="!fileModals.editPath" class="breadcrumb-btn" @click="handleEditPath" title="Edit path">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-            </svg>
-          </button>
         </div>
       </div>
 
@@ -2308,6 +2425,36 @@ watch(
       :position="popoverPosition"
       :data="popoverData"
     />
+
+    <!-- Quick Access Modal/Sidebar -->
+    <div v-if="quickAccessOpen" class="quick-access-overlay">
+      <div class="quick-access-container">
+        <div class="quick-access-editor">
+          <FileEditor
+            v-if="quickAccessFile"
+            :file-path="quickAccessFile.path"
+            :content="quickAccessFile.content"
+            :loading="quickAccessFile.loading"
+            :auto-save="autoSaveFilesEnabled"
+            @save="handleQuickAccessSave"
+          />
+        </div>
+        <div class="quick-access-footer">
+          <div class="quick-access-info">
+            <span class="quick-access-filename">{{ quickAccessFileName }}</span>
+            <span class="quick-access-stats">
+              {{ quickAccessFileSize }} · {{ quickAccessTotalLines }} lines · {{ quickAccessTotalChars }} chars
+            </span>
+          </div>
+          <button class="quick-access-close-btn" @click="closeQuickAccess" title="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -3076,6 +3223,26 @@ watch(
   color: var(--text-primary);
 }
 
+.quick-access-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.quick-access-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
 .mode-tabs-group {
   display: flex;
   gap: 2px;
@@ -3160,13 +3327,12 @@ watch(
   font-weight: 600;
 }
 
-/* Files explorer header (below mode tabs) */
+/* Files explorer header (above toolbar) */
 .files-explorer-header {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 16px;
-  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 6px;
   background: var(--bg-primary);
 }
 
@@ -3969,5 +4135,113 @@ watch(
 
 .terminal-label-desktop {
   display: inline;
+}
+
+/* Quick Access Modal/Sidebar */
+.quick-access-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  justify-content: flex-end;
+  align-items: stretch;
+}
+
+.quick-access-container {
+  background: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.quick-access-editor {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+}
+
+.quick-access-footer {
+  border-top: 1px solid var(--border-color);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--bg-secondary);
+}
+
+.quick-access-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.quick-access-filename {
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quick-access-stats {
+  color: var(--text-secondary);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quick-access-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.quick-access-close-btn:hover {
+  background: var(--bg-active);
+  border-color: var(--border-hover);
+}
+
+.quick-access-close-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Tablet and Desktop: Right sidebar (>600px) */
+@media (min-width: 601px) {
+  .quick-access-overlay {
+    background: transparent;
+    pointer-events: none;
+  }
+
+  .quick-access-container {
+    width: 450px;
+    box-shadow:
+      -2px 0 8px rgba(0, 0, 0, 0.2),
+      0 0 0 1px rgba(255, 255, 255, 0.1),
+      -4px 0 12px rgba(255, 255, 255, 0.05);
+    pointer-events: auto;
+  }
 }
 </style>

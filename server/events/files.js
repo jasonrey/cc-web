@@ -1,6 +1,8 @@
+import { existsSync, realpathSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import { homedir } from 'node:os';
 import path from 'node:path';
+import { config } from '../config.js';
 import { send } from '../lib/ws.js';
 
 /**
@@ -13,9 +15,39 @@ import { send } from '../lib/ws.js';
 function validatePath(requestedPath, context) {
   const resolved = path.resolve(requestedPath);
 
-  // Allow access to:
-  // 1. User's home directory (for browsing projects)
-  // 2. Current project directory (from context.projectPath if available)
+  // If --root is set, enforce strict root restriction
+  if (config.rootPath) {
+    try {
+      // SECURITY: Resolve symlinks to prevent escape via symlink
+      // For non-existent paths (create operations), resolve the parent
+      const resolvedPath = existsSync(resolved)
+        ? realpathSync(resolved)
+        : (() => {
+            const parent = path.dirname(resolved);
+            const basename = path.basename(resolved);
+            return existsSync(parent)
+              ? path.join(realpathSync(parent), basename)
+              : resolved;
+          })();
+
+      const resolvedRoot = realpathSync(config.rootPath);
+      const relativePath = path.relative(resolvedRoot, resolvedPath);
+
+      // Check if path is within root (relative path shouldn't start with ..)
+      if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+        throw new Error(
+          `Access denied: path outside root (${config.rootPath})`,
+        );
+      }
+
+      return resolvedPath;
+    } catch (err) {
+      // If realpath fails, deny access
+      throw new Error(`Access denied: unable to resolve path (${err.message})`);
+    }
+  }
+
+  // Default behavior (no --root set): Allow home directory and project
   const allowedRoots = [homedir()];
 
   // Add project path if available in context

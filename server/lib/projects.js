@@ -3,7 +3,7 @@
  */
 
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 import { config, getProjectDisplayName, slugToPath } from '../config.js';
 
 /**
@@ -61,10 +61,27 @@ export function getProjectsList() {
 
         // Only include projects that have sessions
         if (sessionCount > 0) {
+          const projectPath = slugToPath(slug);
+
+          // If --root is set, filter projects outside root
+          if (config.rootPath) {
+            const resolvedProject = resolve(projectPath);
+            const resolvedRoot = resolve(config.rootPath);
+            const relativePath = relative(resolvedRoot, resolvedProject);
+
+            // Skip projects outside root
+            if (
+              relativePath.startsWith('..') ||
+              resolve(relativePath).startsWith('..')
+            ) {
+              continue;
+            }
+          }
+
           projects.push({
             slug,
             name: displayName,
-            path: slugToPath(slug),
+            path: projectPath,
             sessionCount,
             lastModified,
           });

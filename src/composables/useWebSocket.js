@@ -20,6 +20,9 @@ const sessionStatuses = ref(new Map());
 const currentVersion = ref(null);
 const updateAvailable = ref(null); // { currentVersion, latestVersion, updateUrl }
 
+// Root path restriction (if --root is set on server)
+const rootPath = ref(null);
+
 let globalWs = null;
 let globalReconnectTimeout = null;
 
@@ -106,6 +109,9 @@ function handleGlobalMessage(msg) {
     case 'connected':
       if (msg.version) {
         currentVersion.value = msg.version;
+      }
+      if (msg.rootPath) {
+        rootPath.value = msg.rootPath;
       }
       break;
 
@@ -381,6 +387,7 @@ export function useWebSocket() {
     sessionStatuses: readonly(sessionStatuses),
     currentVersion: readonly(currentVersion),
     updateAvailable: readonly(updateAvailable),
+    rootPath: readonly(rootPath),
 
     // Connection
     connect: connectGlobal,
@@ -795,6 +802,8 @@ export function useChatWebSocket() {
 
   function killProcess(processId, signal) {
     send({ type: 'terminal:kill', processId, signal });
+    // Refresh process list after a short delay to reflect the change
+    setTimeout(() => listProcesses(), 100);
   }
 
   function listProcesses() {
