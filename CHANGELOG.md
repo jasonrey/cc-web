@@ -5,6 +5,32 @@ All notable changes to tofucode.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-02-15
+
+### Added
+- Cmd+N keyboard shortcut to create new session from current project
+- Cmd+J keyboard shortcut to jump to next displayed recent session
+- Yellow badge indicator in sidebar showing running terminal count per session
+- Terminal tab badge now shows running process count immediately on page load
+
+### Changed
+- Updated dependencies to latest compatible versions
+  - @anthropic-ai/claude-agent-sdk: 0.2.37 → 0.2.42
+  - @biomejs/biome: 2.3.13 → 2.3.15
+  - marked: 17.0.1 → 17.0.2
+  - tiny-markdown-editor: 0.2.18 → 0.2.19
+  - vue: 3.5.27 → 3.5.28
+  - qs: 6.14.1 → 6.15.0 (security fix)
+- Now tracking package-lock.json for reproducible Docker builds
+- Keyboard shortcuts modal now uses symbols (⌘/^) instead of text (Ctrl/Cmd)
+- Restart server button moved from sidebar to settings modal
+- Terminal count badges now use global WebSocket broadcast for real-time updates
+
+### Fixed
+- Security vulnerability in qs package (CVE-2026-2391)
+- Keyboard shortcut display corrected from Cmd+? to Cmd+/ (matches actual shortcut)
+- Terminal tab badge now displays correctly on page refresh without clicking terminal first
+
 ## [1.0.1] - 2026-02-15
 
 ### Changed

@@ -20,6 +20,7 @@ const {
   projects,
   recentSessions,
   sessionStatuses,
+  terminalCounts,
   currentVersion,
   updateAvailable,
   getProjects,
@@ -28,15 +29,13 @@ const {
   send,
 } = useWebSocket();
 
-// Upgrade/Restart state
+// Upgrade state
 const isUpgrading = ref(false);
-const isRestarting = ref(false);
 
-// Reset states when reconnected
+// Reset state when reconnected
 watch(connected, (isConnected) => {
   if (isConnected) {
     isUpgrading.value = false;
-    isRestarting.value = false;
   }
 });
 
@@ -52,19 +51,6 @@ function handleUpgrade() {
   if (confirmed) {
     isUpgrading.value = true;
     send({ type: 'upgrade', version });
-  }
-}
-
-function handleRestart() {
-  if (isRestarting.value) return;
-
-  const confirmed = confirm(
-    'Restart the server?\n\nThis will briefly disconnect all clients. They will automatically reconnect.',
-  );
-
-  if (confirmed) {
-    isRestarting.value = true;
-    send({ type: 'restart' });
   }
 }
 
@@ -223,6 +209,10 @@ function handleOverlayClick() {
                 <span>{{ formatRelativeTime(session.modified) }}</span>
               </p>
             </div>
+            <!-- Terminal indicator badge -->
+            <div v-if="terminalCounts.get(session.projectSlug)" class="terminal-badge">
+              {{ terminalCounts.get(session.projectSlug) }}
+            </div>
           </a>
         </li>
         <li v-if="recentSessions.length === 0" class="sidebar-empty">
@@ -345,24 +335,6 @@ function handleOverlayClick() {
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
           <circle cx="12" cy="12" r="3"/>
-        </svg>
-      </button>
-
-      <!-- Restart button (shown when no update available) -->
-      <button
-        v-if="!updateAvailable"
-        class="restart-btn"
-        @click="handleRestart"
-        :disabled="isRestarting"
-        title="Restart server"
-      >
-        <svg v-if="!isRestarting" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M23 4v6h-6"/>
-          <path d="M1 20v-6h6"/>
-          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-        </svg>
-        <svg v-else width="14" height="14" viewBox="0 0 24 24" class="spin">
-          <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="31.4 31.4" stroke-linecap="round"/>
         </svg>
       </button>
     </div>
@@ -515,45 +487,6 @@ function handleOverlayClick() {
   border-color: var(--text-muted);
 }
 
-.restart-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  background: transparent;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.restart-btn:hover:not(:disabled) {
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-  border-color: var(--text-muted);
-}
-
-.restart-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.restart-btn .spin {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .sidebar-tabs {
   display: flex;
   align-items: center;
@@ -623,6 +556,23 @@ function handleOverlayClick() {
   text-decoration: none;
   flex: 1;
   min-width: 0;
+  position: relative;
+}
+
+.terminal-badge {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #f59e0b;
+  color: #000;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+  line-height: 1.4;
 }
 
 .item-icon {

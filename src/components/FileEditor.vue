@@ -133,7 +133,10 @@ const markdownHeadings = computed(() => {
         level,
         text,
         line: lineNumber,
-        id: text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-'),
+        id: text
+          .toLowerCase()
+          .replace(/[^\w\s-]/g, '')
+          .replace(/\s+/g, '-'),
       });
     }
   }
@@ -184,7 +187,7 @@ function scrollToHeading(heading) {
 
       container.scroll({
         top: scrollTop,
-        behavior: 'smooth'
+        behavior: 'smooth',
       });
     }
   });

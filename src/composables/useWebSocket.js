@@ -15,6 +15,9 @@ const currentFolder = ref(null);
 // Track task status per session for sidebar indicators
 // Map of sessionId -> { status: 'running' | 'completed' | 'error', timestamp }
 const sessionStatuses = ref(new Map());
+// Track terminal process counts per project
+// Map of projectSlug -> count
+const terminalCounts = ref(new Map());
 
 // Version info
 const currentVersion = ref(null);
@@ -228,6 +231,25 @@ function handleGlobalMessage(msg) {
         }
         sessionStatuses.value = newStatuses;
       }
+      // Restore terminal counts per project
+      if (msg.terminalCounts && typeof msg.terminalCounts === 'object') {
+        const newCounts = new Map();
+        for (const [projectSlug, count] of Object.entries(msg.terminalCounts)) {
+          newCounts.set(projectSlug, count);
+        }
+        terminalCounts.value = newCounts;
+      }
+      break;
+
+    case 'terminal_counts':
+      // Update terminal counts (broadcast from server when processes start/exit)
+      if (msg.terminalCounts && typeof msg.terminalCounts === 'object') {
+        const newCounts = new Map();
+        for (const [projectSlug, count] of Object.entries(msg.terminalCounts)) {
+          newCounts.set(projectSlug, count);
+        }
+        terminalCounts.value = newCounts;
+      }
       break;
 
     case 'session_opened':
@@ -385,6 +407,7 @@ export function useWebSocket() {
     folderContents: readonly(folderContents),
     currentFolder: readonly(currentFolder),
     sessionStatuses: readonly(sessionStatuses),
+    terminalCounts: readonly(terminalCounts),
     currentVersion: readonly(currentVersion),
     updateAvailable: readonly(updateAvailable),
     rootPath: readonly(rootPath),
@@ -631,10 +654,12 @@ export function useChatWebSocket() {
       // Terminal events
       case 'terminal:processes':
         terminalProcesses.value = msg.processes;
+        // Terminal counts are now broadcast globally, no need to update here
         break;
 
       case 'terminal:started':
         terminalProcesses.value = [...terminalProcesses.value, msg.process];
+        // Terminal counts are now broadcast globally, no need to update here
         break;
 
       case 'terminal:output': {
@@ -664,6 +689,7 @@ export function useChatWebSocket() {
           // Trigger reactivity
           terminalProcesses.value = [...terminalProcesses.value];
         }
+        // Terminal counts are now broadcast globally, no need to update here
         break;
       }
 

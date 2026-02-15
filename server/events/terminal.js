@@ -7,7 +7,29 @@
 import path from 'node:path';
 import { config, slugToPath } from '../config.js';
 import processManager from '../lib/processManager.js';
-import { send } from '../lib/ws.js';
+import { getTerminalCounts } from '../lib/terminalUtils.js';
+import { broadcast, send } from '../lib/ws.js';
+
+// Debounce timer for terminal count broadcasts
+let broadcastTimer = null;
+const BROADCAST_DEBOUNCE_MS = 100; // 100ms debounce to prevent spam during high process churn
+
+/**
+ * Broadcast terminal count update to all clients (debounced)
+ */
+function broadcastTerminalCounts() {
+  // Clear existing timer
+  if (broadcastTimer) {
+    clearTimeout(broadcastTimer);
+  }
+
+  // Schedule broadcast
+  broadcastTimer = setTimeout(() => {
+    const terminalCounts = getTerminalCounts();
+    broadcast({ type: 'terminal_counts', terminalCounts });
+    broadcastTimer = null;
+  }, BROADCAST_DEBOUNCE_MS);
+}
 
 /**
  * Event: terminal:exec
@@ -77,6 +99,9 @@ export function execHandler(ws, message, context) {
     process: processManager.serialize(entry),
   });
 
+  // Broadcast terminal count update to all clients
+  broadcastTerminalCounts();
+
   // Stream stdout
   entry.proc.stdout.on('data', (data) => {
     const text = data.toString();
@@ -112,6 +137,9 @@ export function execHandler(ws, message, context) {
       signal,
       status: entry.status,
     });
+
+    // Broadcast terminal count update to all clients
+    broadcastTerminalCounts();
   });
 }
 

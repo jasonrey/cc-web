@@ -27,8 +27,8 @@ const settingsContext = inject('settings');
 const router = useRouter();
 const route = useRoute();
 
-// Get recent sessions from global WebSocket
-const { recentSessions, sessionStatuses } = useWebSocket();
+// Get recent sessions and terminal counts from global WebSocket
+const { recentSessions, sessionStatuses, terminalCounts } = useWebSocket();
 
 // Use scoped WebSocket - each ChatView gets its own connection
 const {
@@ -383,6 +383,31 @@ function handleKeydown(e) {
     if (e.key === 'ArrowDown' && currentMode.value === 'chat') {
       e.preventDefault();
       chatMessagesRef.value?.goToNextTurn();
+      return;
+    }
+
+    // Cmd+N: Create new session from current project
+    if (e.key === 'n') {
+      e.preventDefault();
+      if (projectSlug.value) {
+        window.location.href = `/project/${projectSlug.value}/session/new`;
+      }
+      return;
+    }
+
+    // Cmd+J: Jump to next session (cycle through displayed recent sessions)
+    if (e.key === 'j') {
+      e.preventDefault();
+      const displayed = displayedRecentSessions.value || [];
+      if (displayed.length === 0) return;
+
+      // Rotate through displayed recent sessions (max 2)
+      // Since current session is already excluded from displayedRecentSessions,
+      // we just take the first one and cycle
+      const nextSession = displayed[0];
+      if (nextSession) {
+        window.location.href = getSessionUrl(nextSession);
+      }
       return;
     }
   }
@@ -748,8 +773,9 @@ watch(
       // Reload terminal processes AFTER session selection to avoid race condition
       // Terminal processes are project-scoped, so this ensures the response
       // arrives after session_selected is processed
+      // Use nextTick to ensure project_selected message is processed first
       if (shouldReloadTerminal) {
-        listProcesses();
+        nextTick(() => listProcesses());
       }
     }
   },
@@ -1121,10 +1147,10 @@ function toggleHistoryExpand(processId) {
   manualExpandState.value = newMap;
 }
 
-// Count running processes for badge
-const runningProcessCount = computed(
-  () => terminalProcesses.value.filter((p) => p.status === 'running').length,
-);
+// Count running processes for badge (use global terminalCounts for immediate display on page load)
+const runningProcessCount = computed(() => {
+  return terminalCounts.value.get(projectSlug.value) || 0;
+});
 
 // Files mode computed
 const filesBreadcrumbs = computed(() => {

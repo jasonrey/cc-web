@@ -23,6 +23,7 @@
  */
 
 import { tasks } from '../lib/tasks.js';
+import { getTerminalCounts } from '../lib/terminalUtils.js';
 import { send } from '../lib/ws.js';
 
 export function handler(ws, _message, _context) {
@@ -44,8 +45,12 @@ export function handler(ws, _message, _context) {
     }
   }
 
+  // Get terminal process counts per project
+  const terminalCounts = getTerminalCounts();
+
   send(ws, {
     type: 'task_statuses',
     statuses,
+    terminalCounts,
   });
 }
