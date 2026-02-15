@@ -1,5 +1,0 @@
-- ~~kill process bug, process is killed but not updated in ui~~
-- ~~quick TODO.md access (configurable in settings what is the default file to find in the project folder)~~
-- ~~project path guard~~
-- docker
-- help icon beside settings icon, help sheet to show all keyboard shortcuts
