@@ -2447,6 +2447,10 @@ watch(
             </span>
           </div>
           <button class="quick-access-close-btn" @click="closeQuickAccess">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
             Close
           </button>
         </div>
@@ -4167,7 +4171,9 @@ watch(
   border-top: 1px solid var(--border-color);
   padding: 12px 16px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
   gap: 12px;
   background: var(--bg-secondary);
 }
@@ -4177,20 +4183,31 @@ watch(
   flex-direction: column;
   gap: 4px;
   font-size: 12px;
+  flex: 1;
+  min-width: 0;
 }
 
 .quick-access-filename {
   font-weight: 600;
   color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .quick-access-stats {
   color: var(--text-secondary);
   font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .quick-access-close-btn {
-  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
   background: var(--bg-hover);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
@@ -4199,6 +4216,8 @@ watch(
   font-size: 13px;
   font-weight: 500;
   transition: all 0.15s;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .quick-access-close-btn:hover {
@@ -4206,8 +4225,13 @@ watch(
   border-color: var(--border-hover);
 }
 
-/* Desktop: Right sidebar (>768px) */
-@media (min-width: 769px) {
+.quick-access-close-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Tablet and Desktop: Right sidebar (>600px) */
+@media (min-width: 601px) {
   .quick-access-overlay {
     background: transparent;
     pointer-events: none;
