@@ -7,7 +7,23 @@
 import path from 'node:path';
 import { config, slugToPath } from '../config.js';
 import processManager from '../lib/processManager.js';
-import { send } from '../lib/ws.js';
+import { broadcast, send } from '../lib/ws.js';
+
+/**
+ * Broadcast terminal count update to all clients
+ */
+function broadcastTerminalCounts() {
+  const terminalCounts = {};
+  for (const [projectSlug, processMap] of processManager.projects) {
+    const runningCount = Array.from(processMap.values()).filter(
+      (p) => p.status === 'running',
+    ).length;
+    if (runningCount > 0) {
+      terminalCounts[projectSlug] = runningCount;
+    }
+  }
+  broadcast({ type: 'terminal_counts', terminalCounts });
+}
 
 /**
  * Event: terminal:exec
@@ -77,6 +93,9 @@ export function execHandler(ws, message, context) {
     process: processManager.serialize(entry),
   });
 
+  // Broadcast terminal count update to all clients
+  broadcastTerminalCounts();
+
   // Stream stdout
   entry.proc.stdout.on('data', (data) => {
     const text = data.toString();
@@ -112,6 +131,9 @@ export function execHandler(ws, message, context) {
       signal,
       status: entry.status,
     });
+
+    // Broadcast terminal count update to all clients
+    broadcastTerminalCounts();
   });
 }
 

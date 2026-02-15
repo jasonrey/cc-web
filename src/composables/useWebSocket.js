@@ -241,6 +241,17 @@ function handleGlobalMessage(msg) {
       }
       break;
 
+    case 'terminal_counts':
+      // Update terminal counts (broadcast from server when processes start/exit)
+      if (msg.terminalCounts && typeof msg.terminalCounts === 'object') {
+        const newCounts = new Map();
+        for (const [projectSlug, count] of Object.entries(msg.terminalCounts)) {
+          newCounts.set(projectSlug, count);
+        }
+        terminalCounts.value = newCounts;
+      }
+      break;
+
     case 'session_opened':
       // Clear status indicator when session is opened
       if (msg.sessionId) {
@@ -643,42 +654,12 @@ export function useChatWebSocket() {
       // Terminal events
       case 'terminal:processes':
         terminalProcesses.value = msg.processes;
-        // Update global terminal count for this project
-        if (currentProject.value?.slug) {
-          const runningCount = msg.processes.filter(
-            (p) => p.status === 'running',
-          ).length;
-          const newCounts = new Map(terminalCounts.value);
-          if (runningCount > 0) {
-            newCounts.set(currentProject.value.slug, runningCount);
-          } else {
-            newCounts.delete(currentProject.value.slug);
-          }
-          console.log('[terminal:processes] Updating terminalCounts:', {
-            projectSlug: currentProject.value.slug,
-            runningCount,
-            newCounts: Object.fromEntries(newCounts),
-          });
-          terminalCounts.value = newCounts;
-        } else {
-          console.log('[terminal:processes] Skipping count update - no currentProject:', {
-            currentProject: currentProject.value,
-            processCount: msg.processes.length,
-          });
-        }
+        // Terminal counts are now broadcast globally, no need to update here
         break;
 
       case 'terminal:started':
         terminalProcesses.value = [...terminalProcesses.value, msg.process];
-        // Update global terminal count
-        if (currentProject.value?.slug) {
-          const runningCount = terminalProcesses.value.filter(
-            (p) => p.status === 'running',
-          ).length;
-          const newCounts = new Map(terminalCounts.value);
-          newCounts.set(currentProject.value.slug, runningCount);
-          terminalCounts.value = newCounts;
-        }
+        // Terminal counts are now broadcast globally, no need to update here
         break;
 
       case 'terminal:output': {
@@ -708,19 +689,7 @@ export function useChatWebSocket() {
           // Trigger reactivity
           terminalProcesses.value = [...terminalProcesses.value];
         }
-        // Update global terminal count
-        if (currentProject.value?.slug) {
-          const runningCount = terminalProcesses.value.filter(
-            (p) => p.status === 'running',
-          ).length;
-          const newCounts = new Map(terminalCounts.value);
-          if (runningCount > 0) {
-            newCounts.set(currentProject.value.slug, runningCount);
-          } else {
-            newCounts.delete(currentProject.value.slug);
-          }
-          terminalCounts.value = newCounts;
-        }
+        // Terminal counts are now broadcast globally, no need to update here
         break;
       }
 
