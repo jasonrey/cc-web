@@ -1812,7 +1812,70 @@ watch(
     </div>
 
     <footer class="footer">
-      <!-- Toolbar (at top) -->
+      <!-- Files explorer header (only in files mode) - moved above toolbar -->
+      <div v-if="currentMode === 'files'" class="files-explorer-header">
+        <div class="files-breadcrumb">
+          <button
+            class="breadcrumb-btn"
+            @click="goUpDirectory"
+            :disabled="!filesCurrentPath || filesCurrentPath === '/'"
+            title="Go up"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+          </button>
+          <button
+            class="breadcrumb-btn"
+            @click="projectStatus.cwd && handleFilesNavigate(projectStatus.cwd)"
+            :disabled="!projectStatus.cwd || filesCurrentPath === projectStatus.cwd"
+            title="Go to project root"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </button>
+          <!-- Path editing inline input -->
+          <form v-if="fileModals.editPath" class="breadcrumb-edit-form" @submit.prevent="confirmEditPath">
+            <input
+              ref="pathEditInputRef"
+              type="text"
+              v-model="fileModals.editPathValue"
+              class="breadcrumb-edit-input"
+              placeholder="/path/to/folder"
+              @keydown.escape.prevent="cancelEditPath"
+              @blur="cancelEditPath"
+            />
+          </form>
+          <!-- Path display with breadcrumbs -->
+          <div v-else class="breadcrumb-scroll" @click="handleEditPath">
+            <span class="breadcrumb-path">
+              <template v-if="!filesCurrentPath || filesCurrentPath === '/'">/</template>
+              <template v-else>
+                <span
+                  v-for="(crumb, index) in filesBreadcrumbs"
+                  :key="index"
+                  class="breadcrumb-item"
+                >
+                  <span class="breadcrumb-separator">/</span>
+                  <button class="breadcrumb-link" @click.stop="handleFilesNavigate(crumb.path)">
+                    {{ crumb.name }}
+                  </button>
+                </span>
+              </template>
+            </span>
+          </div>
+          <button v-if="!fileModals.editPath" class="breadcrumb-btn" @click="handleEditPath" title="Edit path">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Toolbar -->
       <div class="toolbar">
         <div class="toolbar-left">
           <span
@@ -1849,9 +1912,8 @@ watch(
             title="Show dotfiles"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
               <circle cx="12" cy="12" r="1"/>
-              <circle cx="12" cy="5" r="1"/>
-              <circle cx="12" cy="19" r="1"/>
             </svg>
           </button>
           <button
@@ -1990,69 +2052,6 @@ watch(
               </svg>
             </button>
           </div>
-        </div>
-      </div>
-
-      <!-- Files explorer header (only in files mode) -->
-      <div v-if="currentMode === 'files'" class="files-explorer-header">
-        <div class="files-breadcrumb">
-          <button
-            class="breadcrumb-btn"
-            @click="goUpDirectory"
-            :disabled="!filesCurrentPath || filesCurrentPath === '/'"
-            title="Go up"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M19 12H5M12 19l-7-7 7-7"/>
-            </svg>
-          </button>
-          <button
-            class="breadcrumb-btn"
-            @click="projectStatus.cwd && handleFilesNavigate(projectStatus.cwd)"
-            :disabled="!projectStatus.cwd || filesCurrentPath === projectStatus.cwd"
-            title="Go to project root"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-              <polyline points="9 22 9 12 15 12 15 22"/>
-            </svg>
-          </button>
-          <!-- Path editing inline input -->
-          <form v-if="fileModals.editPath" class="breadcrumb-edit-form" @submit.prevent="confirmEditPath">
-            <input
-              ref="pathEditInputRef"
-              type="text"
-              v-model="fileModals.editPathValue"
-              class="breadcrumb-edit-input"
-              placeholder="/path/to/folder"
-              @keydown.escape.prevent="cancelEditPath"
-              @blur="cancelEditPath"
-            />
-          </form>
-          <!-- Path display with breadcrumbs -->
-          <div v-else class="breadcrumb-scroll" @click="handleEditPath">
-            <span class="breadcrumb-path">
-              <template v-if="!filesCurrentPath || filesCurrentPath === '/'">/</template>
-              <template v-else>
-                <span
-                  v-for="(crumb, index) in filesBreadcrumbs"
-                  :key="index"
-                  class="breadcrumb-item"
-                >
-                  <span class="breadcrumb-separator">/</span>
-                  <button class="breadcrumb-link" @click.stop="handleFilesNavigate(crumb.path)">
-                    {{ crumb.name }}
-                  </button>
-                </span>
-              </template>
-            </span>
-          </div>
-          <button v-if="!fileModals.editPath" class="breadcrumb-btn" @click="handleEditPath" title="Edit path">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-            </svg>
-          </button>
         </div>
       </div>
 
@@ -3328,13 +3327,12 @@ watch(
   font-weight: 600;
 }
 
-/* Files explorer header (below mode tabs) */
+/* Files explorer header (above toolbar) */
 .files-explorer-header {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 16px;
-  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 6px;
   background: var(--bg-primary);
 }
 
