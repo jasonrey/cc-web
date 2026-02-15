@@ -4158,6 +4158,7 @@ watch(
   flex-direction: column;
   width: 100%;
   height: 100%;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 .quick-access-editor {
@@ -4237,7 +4238,10 @@ watch(
 
   .quick-access-container {
     width: 450px;
-    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.2);
+    box-shadow:
+      -2px 0 8px rgba(0, 0, 0, 0.2),
+      0 0 0 1px rgba(255, 255, 255, 0.1),
+      -4px 0 12px rgba(255, 255, 255, 0.05);
     pointer-events: auto;
   }
 }
