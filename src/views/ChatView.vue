@@ -1164,7 +1164,9 @@ function handleFileSelect(file) {
   });
 }
 
-// Track quick access file attempts for auto-creation
+// Quick access modal/sidebar state
+const quickAccessOpen = ref(false);
+const quickAccessFile = ref(null); // { path, content, loading }
 let quickAccessAttempt = null;
 
 function openQuickAccessFile() {
@@ -1173,22 +1175,59 @@ function openQuickAccessFile() {
     return;
   }
 
-  // Switch to files mode
-  currentMode.value = 'files';
-
   // Construct full path (assuming file is in project root)
   const fullPath = `${projectStatus.value.cwd}/${filename}`;
 
   // Mark this as a quick access attempt
   quickAccessAttempt = fullPath;
 
-  // Try to open the file
-  openedFile.value = { path: fullPath, content: '', loading: true };
+  // Open the modal/sidebar
+  quickAccessOpen.value = true;
+  quickAccessFile.value = { path: fullPath, content: '', loading: true };
+
+  // Request file content
   send({
     type: 'files:read',
     path: fullPath,
   });
 }
+
+function closeQuickAccess() {
+  quickAccessOpen.value = false;
+  quickAccessFile.value = null;
+  quickAccessAttempt = null;
+}
+
+function handleQuickAccessSave(data) {
+  send({
+    type: 'files:write',
+    path: data.path,
+    content: data.content,
+  });
+}
+
+const quickAccessFileName = computed(() => {
+  if (!quickAccessFile.value?.path) return '';
+  return quickAccessFile.value.path.split('/').pop();
+});
+
+const quickAccessFileSize = computed(() => {
+  if (!quickAccessFile.value?.content) return '0 B';
+  const bytes = new Blob([quickAccessFile.value.content]).size;
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+});
+
+const quickAccessTotalLines = computed(() => {
+  if (!quickAccessFile.value?.content) return 0;
+  return quickAccessFile.value.content.split('\n').length;
+});
+
+const quickAccessTotalChars = computed(() => {
+  if (!quickAccessFile.value?.content) return 0;
+  return quickAccessFile.value.content.length;
+});
 
 function handleFileSave(data) {
   send({
@@ -1365,8 +1404,17 @@ function handleFileMessage(msg) {
       filesLoading.value = false;
       break;
     case 'files:read:result':
+      // Handle regular file editor
       if (openedFile.value && openedFile.value.path === msg.path) {
         openedFile.value = {
+          path: msg.path,
+          content: msg.content,
+          loading: false,
+        };
+      }
+      // Handle quick access file
+      if (quickAccessFile.value && quickAccessFile.value.path === msg.path) {
+        quickAccessFile.value = {
           path: msg.path,
           content: msg.content,
           loading: false,
@@ -1380,7 +1428,10 @@ function handleFileMessage(msg) {
     case 'files:read:error':
       console.error('Read error:', msg.error);
       // If this was a quick access file that doesn't exist, create it
-      if (quickAccessAttempt && openedFile.value?.path === quickAccessAttempt) {
+      if (
+        quickAccessAttempt &&
+        quickAccessFile.value?.path === quickAccessAttempt
+      ) {
         const path = quickAccessAttempt;
         quickAccessAttempt = null; // Clear the attempt flag
         // Create the file with empty content
@@ -1389,7 +1440,20 @@ function handleFileMessage(msg) {
           path: path,
           content: '',
         });
-        // Open the newly created file
+        // Open the newly created file in quick access
+        quickAccessFile.value = { path: path, content: '', loading: false };
+      } else if (
+        quickAccessAttempt &&
+        openedFile.value?.path === quickAccessAttempt
+      ) {
+        // Legacy: handle old quick access logic for regular file editor
+        const path = quickAccessAttempt;
+        quickAccessAttempt = null;
+        send({
+          type: 'files:write',
+          path: path,
+          content: '',
+        });
         openedFile.value = { path: path, content: '', loading: false };
       } else if (openedFile.value) {
         openedFile.value = null;
@@ -2361,6 +2425,33 @@ watch(
       :position="popoverPosition"
       :data="popoverData"
     />
+
+    <!-- Quick Access Modal/Sidebar -->
+    <div v-if="quickAccessOpen" class="quick-access-overlay">
+      <div class="quick-access-container">
+        <div class="quick-access-editor">
+          <FileEditor
+            v-if="quickAccessFile"
+            :file-path="quickAccessFile.path"
+            :content="quickAccessFile.content"
+            :loading="quickAccessFile.loading"
+            :auto-save="autoSaveFilesEnabled"
+            @save="handleQuickAccessSave"
+          />
+        </div>
+        <div class="quick-access-footer">
+          <div class="quick-access-info">
+            <span class="quick-access-filename">{{ quickAccessFileName }}</span>
+            <span class="quick-access-stats">
+              {{ quickAccessFileSize }} · {{ quickAccessTotalLines }} lines · {{ quickAccessTotalChars }} chars
+            </span>
+          </div>
+          <button class="quick-access-close-btn" @click="closeQuickAccess">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -4042,5 +4133,90 @@ watch(
 
 .terminal-label-desktop {
   display: inline;
+}
+
+/* Quick Access Modal/Sidebar */
+.quick-access-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  justify-content: flex-end;
+  align-items: stretch;
+}
+
+.quick-access-container {
+  background: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.quick-access-editor {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+}
+
+.quick-access-footer {
+  border-top: 1px solid var(--border-color);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--bg-secondary);
+}
+
+.quick-access-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.quick-access-filename {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.quick-access-stats {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.quick-access-close-btn {
+  padding: 8px 16px;
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s;
+}
+
+.quick-access-close-btn:hover {
+  background: var(--bg-active);
+  border-color: var(--border-hover);
+}
+
+/* Desktop: Right sidebar (>768px) */
+@media (min-width: 769px) {
+  .quick-access-overlay {
+    background: transparent;
+    pointer-events: none;
+  }
+
+  .quick-access-container {
+    width: 450px;
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.2);
+    pointer-events: auto;
+  }
 }
 </style>
