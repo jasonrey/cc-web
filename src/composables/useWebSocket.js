@@ -795,6 +795,8 @@ export function useChatWebSocket() {
 
   function killProcess(processId, signal) {
     send({ type: 'terminal:kill', processId, signal });
+    // Refresh process list after a short delay to reflect the change
+    setTimeout(() => listProcesses(), 100);
   }
 
   function listProcesses() {
