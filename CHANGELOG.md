@@ -16,9 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - vue: 3.5.27 → 3.5.28
   - qs: 6.14.1 → 6.15.0 (security fix)
 - Now tracking package-lock.json for reproducible Docker builds
+- Keyboard shortcuts modal now uses symbols (⌘/^) instead of text (Ctrl/Cmd)
+- Restart server button moved from sidebar to settings modal
 
 ### Fixed
 - Security vulnerability in qs package (CVE-2026-2391)
+- Keyboard shortcut display corrected from Cmd+? to Cmd+/ (matches actual shortcut)
 
 ## [1.0.1] - 2026-02-15
 
