@@ -1168,13 +1168,8 @@ function handleFileSelect(file) {
 let quickAccessAttempt = null;
 
 function openQuickAccessFile() {
-  console.log('[Quick Access] Button clicked');
   const filename = settingsContext?.quickAccessFile?.();
-  console.log('[Quick Access] Filename from settings:', filename);
-  console.log('[Quick Access] Project path:', projectStatus.value?.cwd);
-
   if (!filename || !projectStatus.value?.cwd) {
-    console.log('[Quick Access] Missing filename or project path, aborting');
     return;
   }
 
@@ -1183,7 +1178,6 @@ function openQuickAccessFile() {
 
   // Construct full path (assuming file is in project root)
   const fullPath = `${projectStatus.value.cwd}/${filename}`;
-  console.log('[Quick Access] Opening file:', fullPath);
 
   // Mark this as a quick access attempt
   quickAccessAttempt = fullPath;
