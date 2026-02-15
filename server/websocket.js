@@ -5,6 +5,7 @@
  * Each connection maintains its own context (currentProjectPath, currentSessionId).
  */
 
+import { config } from './config.js';
 import { handlers } from './events/index.js';
 import { logger } from './lib/logger.js';
 import {
@@ -28,10 +29,11 @@ export function handleWebSocket(ws) {
     currentSessionId: null,
   };
 
-  // Send connection info with version
+  // Send connection info with version and root path (if set)
   send(ws, {
     type: 'connected',
     version: getCurrentVersion(),
+    rootPath: config.rootPath || null,
   });
 
   // Send update notification if available

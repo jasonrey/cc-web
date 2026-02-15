@@ -13,6 +13,7 @@ const {
   recentSessions,
   folderContents,
   currentFolder,
+  rootPath,
   connect,
   getProjects,
   getRecentSessionsImmediate,
@@ -107,6 +108,21 @@ function cancelEditingPath() {
     <AppHeader :show-hamburger="true" @toggle-sidebar="sidebar.toggle" />
 
     <main class="main">
+      <!-- Restricted Mode Indicator -->
+      <div v-if="rootPath" class="restricted-mode-banner">
+        <div class="banner-content">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          <div class="banner-text">
+            <span class="banner-title">Restricted Mode</span>
+            <span class="banner-path">{{ rootPath }}</span>
+          </div>
+        </div>
+        <span class="banner-note">Best effort isolation • Use Docker for full security</span>
+      </div>
+
       <!-- Quick Access Cards (like browser new tab) -->
       <section class="quick-access" v-if="quickSessions.length > 0">
         <h2 class="section-title">Recent Sessions</h2>
@@ -238,6 +254,58 @@ function cancelEditingPath() {
   max-width: 800px;
   margin: 0 auto;
   width: 100%;
+}
+
+/* Restricted Mode Banner */
+.restricted-mode-banner {
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(255, 152, 0, 0.1));
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.banner-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.banner-content svg {
+  color: #ffc107;
+  flex-shrink: 0;
+}
+
+.banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.banner-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.banner-path {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.banner-note {
+  font-size: 11px;
+  color: var(--text-muted);
+  padding-left: 28px;
 }
 
 .section-title {
