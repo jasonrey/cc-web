@@ -152,6 +152,7 @@ class ProcessManager {
     // Use user's default shell (from $SHELL) with interactive mode
     // -i: interactive (loads .zshrc, .bashrc, etc.)
     // -c: execute command string
+    // detached: true - creates a new process group (allows killing entire tree)
     const userShell = process.env.SHELL || '/bin/sh';
     const proc = spawn(userShell, ['-i', '-c', command], {
       cwd,
@@ -160,6 +161,7 @@ class ProcessManager {
         FORCE_COLOR: '1',
         TERM: 'xterm-256color',
       },
+      detached: true, // Create new process group for proper cleanup
     });
 
     const entry = {
@@ -252,13 +254,26 @@ class ProcessManager {
   }
 
   /**
-   * Kill a process
+   * Kill a process and its entire process group
    */
   kill(projectSlug, processId, signal = 'SIGTERM') {
     const entry = this.getProcess(projectSlug, processId);
     if (entry?.proc && entry.status === 'running') {
-      entry.proc.kill(signal);
-      return true;
+      try {
+        // Kill the entire process group (negative PID)
+        // This ensures child processes are also killed
+        if (entry.pid) {
+          process.kill(-entry.pid, signal);
+        } else {
+          // Fallback to killing just the process if PID not available
+          entry.proc.kill(signal);
+        }
+        return true;
+      } catch (err) {
+        // Process might have already exited
+        console.error(`Failed to kill process ${processId}:`, err.message);
+        return false;
+      }
     }
     return false;
   }
@@ -271,7 +286,17 @@ class ProcessManager {
     if (entry) {
       // Kill if still running
       if (entry.proc && entry.status === 'running') {
-        entry.proc.kill('SIGKILL');
+        try {
+          // Kill the entire process group with SIGKILL
+          if (entry.pid) {
+            process.kill(-entry.pid, 'SIGKILL');
+          } else {
+            entry.proc.kill('SIGKILL');
+          }
+        } catch (err) {
+          // Process might have already exited
+          console.error(`Failed to kill process ${processId}:`, err.message);
+        }
       }
       this.getProject(projectSlug).delete(processId);
       this.saveToFile();
