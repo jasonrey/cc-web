@@ -28,8 +28,6 @@ const shortcuts = [
         keys: ['⌘/^', '/'],
         description: 'Show keyboard shortcuts (this dialog)',
       },
-      { keys: ['⌘/^', 'N'], description: 'New session from current project' },
-      { keys: ['⌘/^', 'J'], description: 'Jump to next session' },
     ],
   },
   {
@@ -38,6 +36,8 @@ const shortcuts = [
       { keys: ['⌘/^', '1'], description: 'Switch to Chat tab' },
       { keys: ['⌘/^', '2'], description: 'Switch to Terminal tab' },
       { keys: ['⌘/^', '3'], description: 'Switch to Files tab' },
+      { keys: ['⌘/^', 'N'], description: 'New session from current project' },
+      { keys: ['⌘/^', 'J'], description: 'Jump to next session' },
       { keys: ['⌘/^', 'L'], description: 'Scroll to bottom (clear view)' },
       { keys: ['⌘/^', '↑'], description: 'Navigate to previous turn' },
       { keys: ['⌘/^', '↓'], description: 'Navigate to next turn' },
