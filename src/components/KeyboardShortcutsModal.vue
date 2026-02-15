@@ -28,6 +28,8 @@ const shortcuts = [
         keys: ['⌘/^', '/'],
         description: 'Show keyboard shortcuts (this dialog)',
       },
+      { keys: ['⌘/^', 'N'], description: 'New session from current project' },
+      { keys: ['⌘/^', 'J'], description: 'Jump to next session' },
     ],
   },
   {

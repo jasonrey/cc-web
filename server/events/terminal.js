@@ -22,7 +22,6 @@ function broadcastTerminalCounts() {
       terminalCounts[projectSlug] = runningCount;
     }
   }
-  console.log('[broadcastTerminalCounts]', { terminalCounts });
   broadcast({ type: 'terminal_counts', terminalCounts });
 }
 

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.2] - 2026-02-15
 
+### Added
+- Cmd+N keyboard shortcut to create new session from current project
+- Cmd+J keyboard shortcut to jump to next displayed recent session
+- Yellow badge indicator in sidebar showing running terminal count per session
+- Terminal tab badge now shows running process count immediately on page load
+
 ### Changed
 - Updated dependencies to latest compatible versions
   - @anthropic-ai/claude-agent-sdk: 0.2.37 → 0.2.42
@@ -18,10 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Now tracking package-lock.json for reproducible Docker builds
 - Keyboard shortcuts modal now uses symbols (⌘/^) instead of text (Ctrl/Cmd)
 - Restart server button moved from sidebar to settings modal
+- Terminal count badges now use global WebSocket broadcast for real-time updates
 
 ### Fixed
 - Security vulnerability in qs package (CVE-2026-2391)
 - Keyboard shortcut display corrected from Cmd+? to Cmd+/ (matches actual shortcut)
+- Terminal tab badge now displays correctly on page refresh without clicking terminal first
 
 ## [1.0.1] - 2026-02-15
 
