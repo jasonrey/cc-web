@@ -33,7 +33,6 @@ import {
   send,
   watchSession,
 } from '../lib/ws.js';
-import { waitForQuestionAnswer } from './answer-question.js';
 
 // Helper to send to client and broadcast to other session watchers
 function sendAndBroadcast(ws, sessionId, message) {
@@ -361,12 +360,12 @@ async function executePrompt(ws, projectSlug, sessionId, prompt, options = {}) {
             addTaskResult(task, result);
             sendAndBroadcast(ws, taskSessionId, result);
 
-            // Intercept AskUserQuestion: pause stream and wait for user answers
+            // Signal frontend for AskUserQuestion - let stream continue
+            // The user will answer later, and we'll handle it as a follow-up prompt
             if (
               block.name === 'AskUserQuestion' &&
               block.input?.questions?.length
             ) {
-              // Signal frontend that we're waiting for answers
               sendAndBroadcast(ws, taskSessionId, {
                 type: 'ask_user_question',
                 toolUseId: block.id,
@@ -374,47 +373,15 @@ async function executePrompt(ws, projectSlug, sessionId, prompt, options = {}) {
                 sessionId: taskSessionId,
               });
 
-              try {
-                // Block stream iteration until user answers
-                // No timeout - user must answer or cancel the task via AbortController
-                const answers = await waitForQuestionAnswer(
-                  block.id,
-                  taskSessionId,
-                );
-                logger.log(`Received answers for AskUserQuestion ${block.id}`);
-
-                // Inject the tool_result back into the SDK via streamInput()
-                await stream.streamInput(
-                  (async function* () {
-                    yield {
-                      type: 'user',
-                      message: {
-                        role: 'user',
-                        content: [
-                          {
-                            type: 'tool_result',
-                            tool_use_id: block.id,
-                            content: JSON.stringify(answers),
-                          },
-                        ],
-                      },
-                      parent_tool_use_id: null,
-                      session_id: taskSessionId,
-                    };
-                  })(),
-                );
-
-                sendAndBroadcast(ws, taskSessionId, {
-                  type: 'question_answered',
-                  toolUseId: block.id,
-                  sessionId: taskSessionId,
-                });
-              } catch (err) {
-                // This triggers if user cancels the task while question is pending
-                logger.log(
-                  `AskUserQuestion ${block.id} cancelled: ${err.message}`,
-                );
-              }
+              // Store the pending question so we know to expect an answer
+              const { pendingQuestions } = await import('./answer-question.js');
+              pendingQuestions.set(block.id, {
+                sessionId: taskSessionId,
+                toolUseId: block.id,
+              });
+              logger.log(
+                `[prompt] Stored pending question ${block.id} for later answer`,
+              );
             }
           } else {
             console.log(

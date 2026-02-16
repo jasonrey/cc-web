@@ -17,10 +17,20 @@ export const pendingQuestions = new Map();
 /**
  * Handle answer_question WebSocket event
  */
-export function handler(ws, message, context) {
+export async function handler(ws, message, context) {
   const { toolUseId, answers } = message;
 
+  logger.log(
+    `[answer_question] Received handler call: toolUseId=${toolUseId}, answers=${JSON.stringify(answers)}`,
+  );
+  logger.log(
+    `[answer_question] Pending questions: ${Array.from(pendingQuestions.keys()).join(', ')}`,
+  );
+
   if (!toolUseId || !answers) {
+    logger.log(
+      '[answer_question] Invalid payload - missing toolUseId or answers',
+    );
     send(ws, {
       type: 'error',
       message: 'Invalid answer_question payload',
@@ -31,6 +41,9 @@ export function handler(ws, message, context) {
 
   const pending = pendingQuestions.get(toolUseId);
   if (!pending) {
+    logger.log(
+      `[answer_question] No pending question found for toolUseId: ${toolUseId}`,
+    );
     send(ws, {
       type: 'error',
       message: 'No pending question found for this toolUseId',
@@ -39,25 +52,55 @@ export function handler(ws, message, context) {
     return;
   }
 
-  logger.log(`Received answer for question ${toolUseId}`);
-  pending.resolve(answers);
-  pendingQuestions.delete(toolUseId);
-}
+  logger.log(
+    '[answer_question] Appending tool_result to session JSONL and resuming',
+  );
 
-/**
- * Wait for user to answer a question.
- * Returns a Promise that resolves when the frontend sends answer_question.
- *
- * No timeout - the user must either answer or cancel the task.
- * This avoids unexpected stream termination from arbitrary timeouts.
- * The existing task cancel (AbortController) serves as the escape hatch.
- *
- * @param {string} toolUseId - The tool_use ID to wait for
- * @param {string} sessionId - The session ID for this question
- * @returns {Promise<Record<string, string|string[]>>} User's answers
- */
-export function waitForQuestionAnswer(toolUseId, sessionId) {
-  return new Promise((resolve, reject) => {
-    pendingQuestions.set(toolUseId, { resolve, reject, sessionId });
-  });
+  // Write tool_result to session JSONL file
+  const { slugToPath } = await import('../config.js');
+  const { appendFileSync } = await import('node:fs');
+  const { join } = await import('node:path');
+
+  const projectPath = slugToPath(context.currentProjectPath);
+  const claudeDir = join(projectPath, '.claude');
+  const jsonlPath = join(claudeDir, `${pending.sessionId}.jsonl`);
+
+  // Append tool_result as a user message
+  const toolResultEntry = {
+    type: 'user',
+    message: {
+      role: 'user',
+      content: [
+        {
+          type: 'tool_result',
+          tool_use_id: toolUseId,
+          content: JSON.stringify(answers),
+        },
+      ],
+    },
+    parent_tool_use_id: null,
+    session_id: pending.sessionId,
+  };
+
+  appendFileSync(jsonlPath, `${JSON.stringify(toolResultEntry)}\n`, 'utf8');
+  logger.log(`[answer_question] Appended tool_result to ${jsonlPath}`);
+
+  // Trigger prompt handler to resume the session with empty prompt
+  // This will pick up the tool_result from the session file
+  const { handler: promptHandler } = await import('./prompt.js');
+  await promptHandler(
+    ws,
+    {
+      type: 'prompt',
+      prompt: '', // Empty prompt to just resume
+      sessionId: pending.sessionId,
+      projectPath: context.currentProjectPath,
+    },
+    context,
+  );
+
+  pendingQuestions.delete(toolUseId);
+  logger.log(
+    `[answer_question] Question ${toolUseId} answered and session resumed`,
+  );
 }
