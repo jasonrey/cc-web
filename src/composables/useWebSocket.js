@@ -639,15 +639,20 @@ export function useChatWebSocket() {
       case 'result':
       case 'error':
         // Filter out messages that don't belong to the current session
-        // Both client and server sessionId must match (and both must be non-null)
+        // Accept messages in these cases:
+        // 1. Message sessionId matches current session (normal case)
+        // 2. Current session is null (new session being created) - accept any messages
+        //    because server assigns ID before we receive session_info
         if (msg.sessionId && msg.sessionId === currentSession.value) {
+          // Case 1: Normal - session IDs match
           messages.value.push(msg);
-        } else if (!msg.sessionId && !currentSession.value) {
-          // Both are null/undefined - this happens during new session creation
-          // before the server assigns an ID. Accept these messages.
+        } else if (!currentSession.value) {
+          // Case 2: New session creation - currentSession is null
+          // Accept messages from the new session being created
+          // (server assigns ID before session_info arrives)
           messages.value.push(msg);
         } else {
-          // Mismatch - log for debugging but don't append
+          // Mismatch - different session's message
           console.warn(
             `[useChatWebSocket] Ignoring message for different session. Message sessionId: ${msg.sessionId}, Current sessionId: ${currentSession.value}, Message type: ${msg.type}`,
           );
