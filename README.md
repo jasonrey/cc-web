@@ -45,6 +45,25 @@ See [Docker Guide](./docs/DOCKER.md) for all configuration options.
 
 ---
 
+## Screenshots
+
+### Homepage
+![Homepage](https://raw.githubusercontent.com/picotofu/tofucode/main/samples/homepage.png)
+
+### Chat View
+![Chat View](https://raw.githubusercontent.com/picotofu/tofucode/main/samples/chat-view.png)
+
+### Terminal Mode
+![Terminal Mode](https://raw.githubusercontent.com/picotofu/tofucode/main/samples/terminal-view.png)
+
+### Files Browser
+![Files Browser](https://raw.githubusercontent.com/picotofu/tofucode/main/samples/files-view.png)
+
+### Markdown Editor
+![Markdown Editor](https://raw.githubusercontent.com/picotofu/tofucode/main/samples/editor-view.png)
+
+---
+
 ## Requirements
 
 - **Node.js 18+**
