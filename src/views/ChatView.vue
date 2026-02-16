@@ -63,6 +63,7 @@ const {
   clearTerminal,
   clearTaskStatus,
   send,
+  sendAndWait,
   onMessage,
 } = useChatWebSocket();
 
@@ -192,8 +193,8 @@ const fileModals = ref({
 const showGitDiffModal = ref(false);
 
 function openGitDiffModal() {
-  // Only open if we have git changes
-  if (projectStatus.value.gitChanges && fileChangesText.value) {
+  // Only open if we have git changes and a valid project path
+  if (projectStatus.value.gitChanges && fileChangesText.value && projectStatus.value.cwd) {
     showGitDiffModal.value = true;
   }
 }
@@ -2441,6 +2442,7 @@ watch(
     <GitDiffModal
       v-if="showGitDiffModal"
       :project-path="projectStatus.cwd"
+      :send-and-wait="sendAndWait"
       @close="closeGitDiffModal"
     />
 

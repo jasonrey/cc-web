@@ -844,6 +844,30 @@ export function useChatWebSocket() {
     taskStatus.value = 'idle';
   }
 
+  function sendAndWait(message, responseType, timeout = 30000) {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        cleanup();
+        reject(new Error(`Timeout waiting for ${responseType}`));
+      }, timeout);
+
+      const handler = (msg) => {
+        if (msg.type === responseType) {
+          cleanup();
+          resolve(msg);
+        }
+      };
+
+      const cleanup = () => {
+        clearTimeout(timer);
+        messageHandlers.delete(handler);
+      };
+
+      messageHandlers.add(handler);
+      send(message);
+    });
+  }
+
   // Auto-cleanup on unmount
   onUnmounted(() => {
     disconnect();
@@ -899,5 +923,6 @@ export function useChatWebSocket() {
 
     // Direct send
     send,
+    sendAndWait,
   };
 }

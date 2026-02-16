@@ -5,6 +5,12 @@ All notable changes to tofucode.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Git diff modal now correctly uses scoped WebSocket connection with project context
+- Git changes viewer no longer shows "No project selected" error when clicking on git status indicator
+
 ## [1.0.2] - 2026-02-15
 
 ### Added
