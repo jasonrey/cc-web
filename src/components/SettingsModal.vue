@@ -179,13 +179,14 @@ function handleRestart() {
 
         <!-- Enable Memo Feature -->
         <div class="setting-item">
-          <div class="setting-header">
+          <label class="setting-label">
+            <input
+              type="checkbox"
+              v-model="localSettings.enableMemo"
+              class="setting-checkbox"
+            />
             <span class="setting-title">Enable Memo</span>
-            <label class="toggle">
-              <input type="checkbox" v-model="localSettings.enableMemo" />
-              <span class="slider"></span>
-            </label>
-          </div>
+          </label>
           <p class="setting-description">
             Enable quick memo access with Cmd+M. Shows memo button beside mode tabs.
           </p>
