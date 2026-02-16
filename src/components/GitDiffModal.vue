@@ -1,17 +1,19 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { useWebSocket } from '../composables/useWebSocket';
 
 const props = defineProps({
   projectPath: {
     type: String,
+    required: false,
+    default: '',
+  },
+  sendAndWait: {
+    type: Function,
     required: true,
   },
 });
 
 const emit = defineEmits(['close']);
-
-const { sendAndWait } = useWebSocket();
 const loading = ref(true);
 const files = ref([]);
 const diffs = ref({});
@@ -32,8 +34,15 @@ async function loadGitDiff() {
   loading.value = true;
   error.value = null;
 
+  // Validate projectPath before making the request
+  if (!props.projectPath) {
+    error.value = 'No project selected';
+    loading.value = false;
+    return;
+  }
+
   try {
-    const response = await sendAndWait(
+    const response = await props.sendAndWait(
       { type: 'get_git_diff', projectPath: props.projectPath },
       'git_diff',
     );
