@@ -24,6 +24,7 @@
 import path from 'node:path';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { config, slugToPath } from '../config.js';
+import { logger } from '../lib/logger.js';
 import { loadMcpServers } from '../lib/mcp.js';
 import { addTaskResult, getOrCreateTask, tasks } from '../lib/tasks.js';
 import {
@@ -376,7 +377,10 @@ async function executePrompt(ws, projectSlug, sessionId, prompt, options = {}) {
               try {
                 // Block stream iteration until user answers
                 // No timeout - user must answer or cancel the task via AbortController
-                const answers = await waitForQuestionAnswer(block.id);
+                const answers = await waitForQuestionAnswer(
+                  block.id,
+                  taskSessionId,
+                );
                 logger.log(`Received answers for AskUserQuestion ${block.id}`);
 
                 // Inject the tool_result back into the SDK via streamInput()

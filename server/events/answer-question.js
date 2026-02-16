@@ -11,17 +11,21 @@
 import { logger } from '../lib/logger.js';
 import { send } from '../lib/ws.js';
 
-// Map of toolUseId -> { resolve, reject, timeout }
+// Map of toolUseId -> { resolve, reject, sessionId }
 export const pendingQuestions = new Map();
 
 /**
  * Handle answer_question WebSocket event
  */
-export function handler(ws, message, _context) {
+export function handler(ws, message, context) {
   const { toolUseId, answers } = message;
 
   if (!toolUseId || !answers) {
-    send(ws, { type: 'error', message: 'Invalid answer_question payload' });
+    send(ws, {
+      type: 'error',
+      message: 'Invalid answer_question payload',
+      sessionId: context.currentSessionId,
+    });
     return;
   }
 
@@ -30,6 +34,7 @@ export function handler(ws, message, _context) {
     send(ws, {
       type: 'error',
       message: 'No pending question found for this toolUseId',
+      sessionId: context.currentSessionId,
     });
     return;
   }
@@ -48,10 +53,11 @@ export function handler(ws, message, _context) {
  * The existing task cancel (AbortController) serves as the escape hatch.
  *
  * @param {string} toolUseId - The tool_use ID to wait for
+ * @param {string} sessionId - The session ID for this question
  * @returns {Promise<Record<string, string|string[]>>} User's answers
  */
-export function waitForQuestionAnswer(toolUseId) {
+export function waitForQuestionAnswer(toolUseId, sessionId) {
   return new Promise((resolve, reject) => {
-    pendingQuestions.set(toolUseId, { resolve, reject });
+    pendingQuestions.set(toolUseId, { resolve, reject, sessionId });
   });
 }

@@ -79,13 +79,19 @@ onUnmounted(() => {
 
 // Restart functionality
 const isRestarting = ref(false);
+const showConnectionPill = ref(false);
 
 // Reset restart state when reconnected
 watch(
   () => props.connected,
   (isConnected) => {
-    if (isConnected) {
+    if (isConnected && isRestarting.value) {
       isRestarting.value = false;
+      showConnectionPill.value = true;
+      // Fade out after 3 seconds
+      setTimeout(() => {
+        showConnectionPill.value = false;
+      }, 3000);
     }
   },
 );
@@ -99,6 +105,7 @@ function handleRestart() {
 
   if (confirmed) {
     isRestarting.value = true;
+    showConnectionPill.value = true;
     emit('restart');
   }
 }
@@ -163,18 +170,21 @@ function handleRestart() {
           <p class="setting-description">
             Customize symbols shown in the text editor toolbar. Enter symbols separated by spaces.
           </p>
-          <input
-            type="text"
-            v-model="localSettings.symbolToolbar"
-            class="setting-input"
-            placeholder="` ~ ! @ # $ % ^ & * ( ) - _ = + /"
-          />
-          <button
-            class="reset-btn"
-            @click="localSettings.symbolToolbar = '` ~ ! @ # $ % ^ & * ( ) - _ = + /'"
-          >
-            Reset to Default
-          </button>
+          <div class="input-with-button">
+            <input
+              type="text"
+              v-model="localSettings.symbolToolbar"
+              class="setting-input"
+              placeholder="` ~ ! @ # $ % ^ & * ( ) - _ = + /"
+            />
+            <button
+              class="reset-btn-inline"
+              @click="localSettings.symbolToolbar = '` ~ ! @ # $ % ^ & * ( ) - _ = + /'"
+              title="Reset to Default"
+            >
+              Reset
+            </button>
+          </div>
         </div>
 
         <!-- Enable Memo Feature -->
@@ -218,21 +228,32 @@ function handleRestart() {
           <p class="setting-description">
             Restart the server. All clients will be briefly disconnected and automatically reconnect.
           </p>
-          <button
-            class="restart-btn"
-            @click="handleRestart"
-            :disabled="isRestarting"
-          >
-            <svg v-if="!isRestarting" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M23 4v6h-6"/>
-              <path d="M1 20v-6h6"/>
-              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-            </svg>
-            <svg v-else width="14" height="14" viewBox="0 0 24 24" class="spin">
-              <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="31.4 31.4" stroke-linecap="round"/>
-            </svg>
-            <span>{{ isRestarting ? 'Restarting...' : 'Restart Server' }}</span>
-          </button>
+          <div class="restart-container">
+            <button
+              class="restart-btn"
+              @click="handleRestart"
+              :disabled="isRestarting"
+            >
+              <svg v-if="!isRestarting" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 4v6h-6"/>
+                <path d="M1 20v-6h6"/>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+              </svg>
+              <svg v-else width="14" height="14" viewBox="0 0 24 24" class="spin">
+                <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="31.4 31.4" stroke-linecap="round"/>
+              </svg>
+              <span>{{ isRestarting ? 'Restarting...' : 'Restart Server' }}</span>
+            </button>
+            <transition name="fade">
+              <div v-if="showConnectionPill" class="connection-pill" :class="{ connected: !isRestarting && connected }">
+                <div v-if="isRestarting" class="pill-spinner"></div>
+                <svg v-else width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                <span>{{ isRestarting ? 'Connecting...' : 'Connected' }}</span>
+              </div>
+            </transition>
+          </div>
         </div>
       </div>
     </div>
@@ -420,6 +441,38 @@ function handleRestart() {
   color: var(--text-muted);
 }
 
+.input-with-button {
+  position: relative;
+  margin-top: 8px;
+}
+
+.input-with-button .setting-input {
+  margin-top: 0;
+  padding-right: 70px; /* Space for button */
+}
+
+.reset-btn-inline {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.reset-btn-inline:hover {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+  background: var(--bg-hover);
+}
+
 .reset-btn {
   margin-top: 8px;
   padding: 6px 12px;
@@ -444,8 +497,14 @@ function handleRestart() {
   border-top: 1px solid var(--border-color);
 }
 
-.restart-btn {
+.restart-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin-top: 8px;
+}
+
+.restart-btn {
   padding: 8px 16px;
   font-size: 13px;
   font-weight: 500;
@@ -472,6 +531,45 @@ function handleRestart() {
 
 .restart-btn .spin {
   animation: spin 1s linear infinite;
+}
+
+.connection-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  transition: opacity 0.3s ease;
+}
+
+.connection-pill.connected {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: rgb(34, 197, 94);
+}
+
+.pill-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--text-secondary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 
 @keyframes spin {
