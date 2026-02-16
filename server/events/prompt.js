@@ -373,31 +373,14 @@ async function executePrompt(ws, projectSlug, sessionId, prompt, options = {}) {
                 sessionId: taskSessionId,
               });
 
-              // Store the pending question with the full tool_use block
-              // We'll need this to write to JSONL before appending tool_result
+              // Store the pending question
               const { pendingQuestions } = await import('./answer-question.js');
               pendingQuestions.set(block.id, {
                 sessionId: taskSessionId,
                 toolUseId: block.id,
-                toolUse: {
-                  type: 'assistant',
-                  message: {
-                    role: 'assistant',
-                    content: [
-                      {
-                        type: 'tool_use',
-                        id: block.id,
-                        name: block.name,
-                        input: block.input,
-                      },
-                    ],
-                  },
-                  parent_tool_use_id: null,
-                  session_id: taskSessionId,
-                },
               });
               logger.log(
-                `[prompt] Stored pending question ${block.id} with tool_use for later answer`,
+                `[prompt] Stored pending question ${block.id} for later answer`,
               );
             }
           } else {

@@ -52,89 +52,40 @@ export async function handler(ws, message, context) {
     return;
   }
 
+  logger.log('[answer_question] Converting answers to natural user message');
+
+  // Convert the Q&A into a natural language message
+  // Format: "Here are my answers: [question]: [answer], [question2]: [answer2]"
+  const answerLines = Object.entries(answers).map(([header, answer]) => {
+    if (Array.isArray(answer)) {
+      return `${header}: ${answer.join(', ')}`;
+    }
+    return `${header}: ${answer}`;
+  });
+
+  const naturalMessage = `Here are my answers:\n${answerLines.join('\n')}`;
+
   logger.log(
-    '[answer_question] Appending tool_result to session JSONL and resuming',
+    `[answer_question] Constructed natural message: ${naturalMessage}`,
   );
 
-  // Write tool_result to session JSONL file
-  const { slugToPath } = await import('../config.js');
-  const { appendFileSync, readFileSync, existsSync } = await import('node:fs');
-  const { join } = await import('node:path');
-
-  const projectPath = slugToPath(context.currentProjectPath);
-  const claudeDir = join(projectPath, '.claude');
-  const jsonlPath = join(claudeDir, `${pending.sessionId}.jsonl`);
-
-  // Check if SDK has written the session file (including AskUserQuestion)
-  // For new sessions, SDK doesn't write until the end, so we need to write it ourselves
-  let toolUseInFile = false;
-  if (existsSync(jsonlPath)) {
-    const content = readFileSync(jsonlPath, 'utf8');
-    toolUseInFile = content.includes(toolUseId);
-  }
-
-  if (!toolUseInFile) {
-    logger.log(
-      `[answer_question] AskUserQuestion ${toolUseId} not in session file, writing it now`,
-    );
-    // Write the tool_use first (we stored it when the question was asked)
-    if (pending.toolUse) {
-      appendFileSync(jsonlPath, `${JSON.stringify(pending.toolUse)}\n`, 'utf8');
-      logger.log(
-        `[answer_question] Wrote AskUserQuestion tool_use to ${jsonlPath}`,
-      );
-    } else {
-      logger.log(
-        `[answer_question] Warning: No tool_use stored for ${toolUseId}`,
-      );
-    }
-  } else {
-    logger.log(
-      `[answer_question] Found AskUserQuestion ${toolUseId} already in session file`,
-    );
-  }
-
-  // Append tool_result as a user message
-  const toolResultEntry = {
-    type: 'user',
-    message: {
-      role: 'user',
-      content: [
-        {
-          type: 'tool_result',
-          tool_use_id: toolUseId,
-          content: JSON.stringify(answers),
-        },
-      ],
-    },
-    parent_tool_use_id: null,
-    session_id: pending.sessionId,
-  };
-
-  appendFileSync(jsonlPath, `${JSON.stringify(toolResultEntry)}\n`, 'utf8');
-  logger.log(`[answer_question] Appended tool_result to ${jsonlPath}`);
-
-  // Trigger prompt handler to resume the session
-  // Send a minimal prompt to continue - SDK will pick up tool_result from session
+  // Trigger prompt handler with the natural message
   const { handler: promptHandler } = await import('./prompt.js');
 
   // Update context to point to the session we're resuming
-  const _previousSessionId = context.currentSessionId;
   context.currentSessionId = pending.sessionId;
 
   await promptHandler(
     ws,
     {
       type: 'prompt',
-      prompt: 'continue', // Minimal prompt to resume (empty string causes API error with cache_control)
+      prompt: naturalMessage,
     },
     context,
   );
 
-  // Don't restore previous sessionId - the handler will update it to the new session
-
   pendingQuestions.delete(toolUseId);
   logger.log(
-    `[answer_question] Question ${toolUseId} answered and session resumed`,
+    `[answer_question] Question ${toolUseId} answered with natural message`,
   );
 }
