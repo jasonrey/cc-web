@@ -958,10 +958,10 @@ watch(inputValue, () => {
 
 // Focus memo editor when content loads
 watch(
-  () => quickAccessFile.value,
-  (newVal, oldVal) => {
-    // Only focus when content just loaded (loading: false)
-    if (newVal && !newVal.loading && oldVal?.loading && memoOpen.value) {
+  () => quickAccessFile.value?.loading,
+  (isLoading, wasLoading) => {
+    // When loading changes from true to false, content just loaded
+    if (wasLoading && !isLoading && memoOpen.value && quickAccessFile.value) {
       nextTick(() => {
         // Wait for FileEditor/Monaco to fully render
         setTimeout(() => {
@@ -974,11 +974,10 @@ watch(
             editorTextarea.selectionStart = editorTextarea.value.length;
             editorTextarea.selectionEnd = editorTextarea.value.length;
           }
-        }, 100);
+        }, 150);
       });
     }
   },
-  { deep: true },
 );
 
 // Format file changes for display
