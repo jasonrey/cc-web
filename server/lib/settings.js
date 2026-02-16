@@ -19,7 +19,15 @@ export function loadSettings() {
       return { ...DEFAULT_SETTINGS };
     }
     const data = readFileSync(SETTINGS_FILE, 'utf8');
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(data) };
+    const loaded = { ...DEFAULT_SETTINGS, ...JSON.parse(data) };
+
+    // Migrate old quickAccessFile setting to memoFile
+    if (loaded.quickAccessFile && !loaded.memoFile) {
+      loaded.memoFile = loaded.quickAccessFile;
+      delete loaded.quickAccessFile;
+    }
+
+    return loaded;
   } catch (err) {
     console.error('Failed to load settings:', err);
     return { ...DEFAULT_SETTINGS };
