@@ -81,9 +81,9 @@ export async function handleUpgrade(_ws, message, _context) {
       message: 'Update installed. Restarting server...',
     });
 
-    // Wait for message to be sent
-    console.log('[UPGRADE] Waiting 500ms for message to be sent...');
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    // Wait briefly for message to be sent
+    console.log('[UPGRADE] Waiting 200ms for message to be sent...');
+    await new Promise((resolve) => setTimeout(resolve, 200));
 
     // Step 2: Restart with inverted spawn (from shared lib)
     console.log(
@@ -99,11 +99,11 @@ export async function handleUpgrade(_ws, message, _context) {
       message: 'Server upgraded successfully. Reconnecting...',
     });
 
-    // Wait for message to be sent
-    console.log('[UPGRADE] Waiting 500ms for message to be sent...');
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    // Wait briefly for message to be sent, then exit quickly to free port
+    console.log('[UPGRADE] Waiting 200ms for message to be sent...');
+    await new Promise((resolve) => setTimeout(resolve, 200));
 
-    // Exit old process - new process will take over
+    // Exit old process immediately - new process is retrying and will take over
     console.log(
       `[UPGRADE] About to call process.exit(0) - PID ${process.pid} exiting now...`,
     );

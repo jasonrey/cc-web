@@ -158,24 +158,30 @@ export async function restartWithInvertedSpawn(reason, newVersion = null) {
     console.log('[RESTART] No PID file to update (not in daemon mode)');
   }
 
-  // Wait for new server to be ready (verify it started)
-  console.log('[RESTART] Waiting 2 seconds for new process to start...');
-  await new Promise((resolve) => setTimeout(resolve, 2000));
+  // For upgrades, skip verification and let old process exit quickly
+  // The new process has retry logic and will eventually bind to the port
+  if (reason !== 'upgrade') {
+    // Wait for new server to be ready (verify it started)
+    console.log('[RESTART] Waiting 2 seconds for new process to start...');
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
-  // Verify new process is still running
-  console.log(
-    `[RESTART] Verifying new process (PID ${newProc.pid}) is still running...`,
-  );
-  try {
-    // Send signal 0 to check if process exists (doesn't actually signal it)
-    process.kill(newProc.pid, 0);
+    // Verify new process is still running
     console.log(
-      `[RESTART] ✅ New process verified running (PID: ${newProc.pid})`,
+      `[RESTART] Verifying new process (PID ${newProc.pid}) is still running...`,
     );
-    logger.log(`Verified new server process is running (PID: ${newProc.pid})`);
-  } catch (_err) {
-    console.error(`[RESTART] ❌ New process NOT running (PID: ${newProc.pid})`);
-    throw new Error(`New server process failed to start (PID: ${newProc.pid})`);
+    try {
+      // Send signal 0 to check if process exists (doesn't actually signal it)
+      process.kill(newProc.pid, 0);
+      console.log(
+        `[RESTART] ✅ New process verified running (PID: ${newProc.pid})`,
+      );
+      logger.log(`Verified new server process is running (PID: ${newProc.pid})`);
+    } catch (_err) {
+      console.error(`[RESTART] ❌ New process NOT running (PID: ${newProc.pid})`);
+      throw new Error(`New server process failed to start (PID: ${newProc.pid})`);
+    }
+  } else {
+    console.log('[RESTART] Upgrade mode: skipping verification, new process will retry binding');
   }
 
   console.log(`[RESTART] Restart token: ${restartToken}`);
