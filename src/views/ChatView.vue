@@ -623,6 +623,69 @@ function focusChatInput(event) {
   editable?.focus();
 }
 
+// Handle Tab key for chat input markdown editor
+function handleChatInputTab(event) {
+  if (!editorInstance.value) return;
+
+  const selection = editorInstance.value.getSelection();
+  if (!selection) return;
+
+  const content = editorInstance.value.getContent();
+  const lines = content.split('\n');
+  const currentLine = lines[selection.row];
+
+  // Check if current line is a list item
+  const listMatch = currentLine.match(/^(\s*)([+*-]|\d+[.)])\s/);
+
+  if (event.shiftKey) {
+    // Shift+Tab: Dedent
+    if (listMatch) {
+      // Dedent list item (remove up to 2 spaces from beginning)
+      const leadingSpaces = listMatch[1];
+      if (leadingSpaces.length >= 2) {
+        const newLine = currentLine.replace(/^ {2}/, '');
+        lines[selection.row] = newLine;
+        editorInstance.value.setContent(lines.join('\n'));
+
+        // Restore cursor position (adjusted for removed spaces)
+        const newCol = Math.max(0, selection.col - 2);
+        editorInstance.value.setSelection({ row: selection.row, col: newCol });
+      }
+    } else {
+      // Not a list - remove up to 2 spaces from beginning
+      if (currentLine.startsWith('  ')) {
+        const newLine = currentLine.replace(/^ {2}/, '');
+        lines[selection.row] = newLine;
+        editorInstance.value.setContent(lines.join('\n'));
+
+        // Restore cursor position
+        const newCol = Math.max(0, selection.col - 2);
+        editorInstance.value.setSelection({ row: selection.row, col: newCol });
+      }
+    }
+  } else {
+    // Tab: Indent
+    if (listMatch) {
+      // Indent list item (add 2 spaces at beginning)
+      const newLine = `  ${currentLine}`;
+      lines[selection.row] = newLine;
+      editorInstance.value.setContent(lines.join('\n'));
+
+      // Restore cursor position (adjusted for added spaces)
+      editorInstance.value.setSelection({
+        row: selection.row,
+        col: selection.col + 2,
+      });
+    } else {
+      // Not a list - insert 2 spaces at cursor
+      editorInstance.value.paste('  ');
+    }
+  }
+
+  // Update inputValue
+  inputValue.value = editorInstance.value.getContent();
+}
+
 // Initialize TinyMDE editor
 function initTinyMDE() {
   nextTick(() => {
@@ -640,11 +703,14 @@ function initTinyMDE() {
         inputValue.value = event.content;
       });
 
-      // Handle Ctrl+Enter / Cmd+Enter in editor via DOM event
+      // Handle Ctrl+Enter / Cmd+Enter and Tab in editor via DOM event
       editorEl.value.addEventListener('keydown', (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
           e.preventDefault();
           handleSubmit();
+        } else if (e.key === 'Tab') {
+          e.preventDefault();
+          handleChatInputTab(e);
         }
       });
     }
