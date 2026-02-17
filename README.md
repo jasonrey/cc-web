@@ -95,25 +95,26 @@ On first run:
 ## Usage
 
 ```bash
-# Start server
+# Start server (default command)
 tofucode
+tofucode start
 
 # Custom port and host
-tofucode -p 8080 -h 127.0.0.1
+tofucode start -p 8080 -h 127.0.0.1
 
 # Run as daemon
-tofucode -d
+tofucode start -d
 
-# Stop/restart/status
-tofucode --stop
-tofucode --restart
-tofucode --status
+# Lifecycle management
+tofucode stop
+tofucode restart
+tofucode status
 
 # Restrict access to a specific directory
-tofucode --root /path/to/project
+tofucode start --root /path/to/project
 
 # Use config file
-tofucode --config prod.json
+tofucode start --config prod.json
 
 # See all options
 tofucode --help
@@ -123,8 +124,8 @@ tofucode --help
 
 **Three ways to configure (priority order):**
 
-1. **CLI arguments:** `tofucode -p 8080 --debug`
-2. **Config file:** `tofucode --config prod.json` (see `config.example.json`)
+1. **CLI arguments:** `tofucode start -p 8080 --debug`
+2. **Config file:** `tofucode start --config prod.json` (see `config.example.json`)
 3. **Environment variables:** `PORT=8080 DEBUG=true tofucode`
 
 | Setting | CLI | Config | Env Var |
@@ -147,7 +148,7 @@ Run `tofucode --help` for all options.
 Use `--root` to restrict file and terminal access to a specific directory:
 
 ```bash
-tofucode --root /home/user/projects/myapp
+tofucode start --root /home/user/projects/myapp
 ```
 
 **What it does:**
@@ -285,7 +286,7 @@ The PWA uses service workers to detect when the frontend code changes:
 3. **One-click update** - Click "Update" to activate the new version instantly
 4. **Content-addressed caching** - Any JS/CSS change triggers an update notification
 
-The PWA updates independently from the backend npm package. For full updates (backend + frontend), use `tofucode --upgrade` or the upgrade button in settings.
+The PWA updates independently from the backend npm package. For full updates (backend + frontend), use the upgrade button in settings.
 
 ---
 

@@ -23,18 +23,31 @@ if (args.includes('--version') || args.includes('-v')) {
   process.exit(0);
 }
 
-// Handle lifecycle commands early (--stop, --restart, --status)
-if (args.includes('--stop')) {
+// Parse command (new subcommand syntax: tofucode start|stop|restart|status)
+// Default to 'start' if first arg starts with '-' or no args provided
+let command = 'start';
+let commandArgs = args;
+
+if (args.length > 0 && !args[0].startsWith('-')) {
+  const possibleCommand = args[0].toLowerCase();
+  if (['start', 'stop', 'restart', 'status'].includes(possibleCommand)) {
+    command = possibleCommand;
+    commandArgs = args.slice(1); // Remove command from args
+  }
+}
+
+// Handle lifecycle commands (subcommands or legacy flags)
+if (command === 'stop' || args.includes('--stop')) {
   await handleStop();
   process.exit(0);
 }
 
-if (args.includes('--restart')) {
+if (command === 'restart' || args.includes('--restart')) {
   await handleRestart();
   process.exit(0);
 }
 
-if (args.includes('--status')) {
+if (command === 'status' || args.includes('--status')) {
   await handleStatus();
   process.exit(0);
 }
@@ -53,12 +66,13 @@ const options = {
   root: null,
 };
 
-for (let i = 0; i < args.length; i++) {
-  const arg = args[i];
+// Parse options from commandArgs (after removing subcommand if present)
+for (let i = 0; i < commandArgs.length; i++) {
+  const arg = commandArgs[i];
   if (arg === '--port' || arg === '-p') {
-    options.port = parseInt(args[++i], 10);
+    options.port = parseInt(commandArgs[++i], 10);
   } else if (arg === '--host' || arg === '-h') {
-    options.host = args[++i];
+    options.host = commandArgs[++i];
   } else if (arg === '--no-auth') {
     options.auth = false;
   } else if (arg === '--daemon' || arg === '-d') {
@@ -68,26 +82,26 @@ for (let i = 0; i < args.length; i++) {
   } else if (arg === '--quiet' || arg === '-q') {
     options.quiet = true;
   } else if (arg === '--log-file') {
-    options.logFile = args[++i];
+    options.logFile = commandArgs[++i];
   } else if (arg === '--pid-file') {
-    options.pidFile = args[++i];
+    options.pidFile = commandArgs[++i];
   } else if (arg === '--config' || arg === '-c') {
-    options.config = args[++i];
+    options.config = commandArgs[++i];
   } else if (arg === '--bypass-token') {
-    options.bypassToken = args[++i];
+    options.bypassToken = commandArgs[++i];
   } else if (arg === '--root') {
-    options.root = resolve(args[++i]);
+    options.root = resolve(commandArgs[++i]);
   } else if (arg === '--help') {
     console.log(`
 tofucode - Web UI for Claude Code
 
 Usage:
-  tofucode [options]
-  tofucode --stop              Stop running daemon
-  tofucode --restart           Restart running daemon
-  tofucode --status            Check daemon status
+  tofucode [start] [options]   Start server (default command)
+  tofucode stop                Stop running daemon
+  tofucode restart             Restart running daemon
+  tofucode status              Check daemon status
 
-Options:
+Options (for start command):
   -p, --port <port>          Port to listen on (default: 3000)
   -h, --host <host>          Host to bind to (default: 0.0.0.0)
   --no-auth                  Disable password authentication
@@ -102,10 +116,14 @@ Options:
   -v, --version              Show version number
   --help                     Show this help message
 
-Daemon Management:
-  --stop                     Stop running daemon (uses PID file)
-  --restart                  Restart running daemon
-  --status                   Check if daemon is running
+Lifecycle Commands:
+  start                      Start server (default)
+  stop                       Stop running daemon
+  restart                    Restart running daemon
+  status                     Check daemon status
+
+  Legacy flags (deprecated):
+  --stop, --restart, --status   Old flag syntax (still supported)
 
 Environment Variables:
   PORT                       Alternative way to set port
@@ -131,14 +149,15 @@ Configuration File:
 
 Examples:
   tofucode                           # Start on http://0.0.0.0:3000
-  tofucode -p 8080                   # Start on port 8080
-  tofucode --no-auth                 # Disable authentication
-  tofucode -d                        # Run as background daemon
-  tofucode -d --debug                # Daemon with debug logging
-  tofucode --config prod.json -d     # Use config file + daemon mode
-  tofucode --root /path/to/project   # Restrict to specific directory
-  tofucode --stop                    # Stop running daemon
-  tofucode --status                  # Check daemon status
+  tofucode start -p 8080             # Start on port 8080
+  tofucode start --no-auth           # Disable authentication
+  tofucode start -d                  # Run as background daemon
+  tofucode start -d --debug          # Daemon with debug logging
+  tofucode start --config prod.json -d   # Use config file + daemon mode
+  tofucode start --root /path/to/project # Restrict to specific directory
+  tofucode stop                      # Stop running daemon
+  tofucode restart                   # Restart running daemon
+  tofucode status                    # Check daemon status
 
 Security:
   --root restricts file and terminal access to the specified directory on a

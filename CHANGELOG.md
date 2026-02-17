@@ -7,8 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.5] - Unreleased
 
+### Changed
+- **CLI subcommands** - Use `tofucode start|stop|restart|status` instead of `--stop`, `--restart`, `--status` flags (legacy flags still supported for backwards compatibility)
+- Log file location now consistently uses `~/.tofucode/tofucode.log` (was split between cwd and ~/.tofucode)
+
 ### Fixed
-- One-click upgrade now properly restarts server (uses shared restart logic with correct PID file handling)
+- One-click upgrade now properly restarts server with correct configuration, port, and daemon mode preserved
+- One-click upgrade exits old process immediately to free port for new process (was blocking for 3+ seconds)
+- Upgrade now spawns newly installed version instead of re-running old script path
 
 ## [1.0.4] - 2026-02-17
 
