@@ -1,8 +1,17 @@
-import { appendFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 const DEBUG = process.env.DEBUG === 'true';
-const LOG_FILE = join(process.cwd(), 'tofucode.log');
+const LOG_DIR = join(homedir(), '.tofucode');
+const LOG_FILE = join(LOG_DIR, 'tofucode.log');
+
+// Ensure log directory exists
+try {
+  mkdirSync(LOG_DIR, { recursive: true });
+} catch {
+  // Ignore if already exists
+}
 
 /**
  * Format timestamp for log entries
