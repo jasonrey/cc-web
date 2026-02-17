@@ -19,6 +19,7 @@ import GitDiffModal from '../components/GitDiffModal.vue';
 import TerminalOutput from '../components/TerminalOutput.vue';
 import { useDebugMode } from '../composables/useDebugMode';
 import { useChatWebSocket, useWebSocket } from '../composables/useWebSocket';
+import { matchesSearch } from '../utils/fileSearch.js';
 import { getShortPath } from '../utils/format.js';
 
 // Get sidebar and settings from App.vue
@@ -130,10 +131,9 @@ const filteredFilesItems = computed(() => {
     );
   }
 
-  // Apply search filter
+  // Apply fuzzy/glob search filter
   if (filesFilter.value.trim()) {
-    const search = filesFilter.value.toLowerCase();
-    items = items.filter((item) => item.name.toLowerCase().includes(search));
+    items = items.filter((item) => matchesSearch(item.name, filesFilter.value));
   }
 
   return items;
@@ -856,6 +856,54 @@ watch(
       if (shouldReloadTerminal) {
         nextTick(() => listProcesses());
       }
+    }
+  },
+  { immediate: true },
+);
+
+// Watch for query params to handle file opening from file picker
+watch(
+  () => route.query,
+  (query) => {
+    // Handle mode switching from query param
+    if (query.mode && ['chat', 'terminal', 'files'].includes(query.mode)) {
+      currentMode.value = query.mode;
+    }
+
+    // Handle folder navigation from file picker (Cmd+P)
+    if (query.folder && query.mode === 'files') {
+      // If switching to Files mode for the first time, wait for component to mount
+      // Use nextTick to ensure DOM updates and FileExplorer is ready
+      nextTick(() => {
+        // Add small delay to ensure FileExplorer is fully mounted and listening
+        setTimeout(() => {
+          send({
+            type: 'files:browse',
+            path: query.folder,
+          });
+        }, 100);
+      });
+      // Note: Keep folder param in URL so it stays after refresh
+    }
+
+    // Handle file opening from file picker (Cmd+P)
+    if (query.file && query.mode === 'files') {
+      // If switching to Files mode for the first time, wait for component to mount
+      // Use nextTick to ensure DOM updates and FileEditor is ready
+      nextTick(() => {
+        // Add small delay to ensure FileEditor is fully mounted
+        setTimeout(() => {
+          // Open the file in the editor
+          openedFile.value = { path: query.file, content: '', loading: true };
+
+          // Request file content
+          send({
+            type: 'files:read',
+            path: query.file,
+          });
+        }, 100);
+      });
+      // Note: Keep file param in URL so it stays after refresh
     }
   },
   { immediate: true },
@@ -2306,7 +2354,7 @@ watch(
           v-model="filesFilter"
           type="text"
           class="files-filter-input"
-          placeholder="Filter files and folders..."
+          placeholder="Filter files... (supports fuzzy & glob: *.md)"
         />
         <button
           v-if="filesFilter"

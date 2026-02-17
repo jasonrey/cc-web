@@ -30,6 +30,7 @@ import { handler as loadOlderMessages } from './load-older-messages.js';
 import { handler as newSession } from './new-session.js';
 import { handler as prompt } from './prompt.js';
 import { handleRestart } from './restart.js';
+import { handleFilesSearch } from './search-files.js';
 import { handler as selectProject } from './select-project.js';
 import { handler as selectSession } from './select-session.js';
 import { handler as setSessionTitle } from './set-session-title.js';
@@ -70,6 +71,7 @@ export const handlers = {
   'files:rename': handleFilesRename,
   'files:delete': handleFilesDelete,
   'files:move': handleFilesMove,
+  'files:search': handleFilesSearch,
   restart: handleRestart,
   upgrade: handleUpgrade,
   get_git_diff: getGitDiff,

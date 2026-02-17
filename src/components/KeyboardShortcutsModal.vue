@@ -22,6 +22,7 @@ const shortcuts = [
     category: 'Global',
     items: [
       { keys: ['⌘/^', 'K'], description: 'Open command palette' },
+      { keys: ['⌘/^', 'P'], description: 'Open file picker' },
       { keys: ['⌘/^', 'B'], description: 'Toggle sidebar' },
       { keys: ['⌘/^', ','], description: 'Open settings' },
       {

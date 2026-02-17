@@ -2,7 +2,7 @@ import { existsSync, realpathSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import { homedir } from 'node:os';
 import path from 'node:path';
-import { config } from '../config.js';
+import { config, slugToPath } from '../config.js';
 import { send } from '../lib/ws.js';
 
 /**
@@ -109,9 +109,14 @@ async function containsMarkdownFiles(dirPath, maxDepth = 3) {
  * Browse folder contents
  */
 export async function handleFilesBrowse(ws, payload, context) {
-  const { path: folderPath } = payload;
+  let { path: folderPath } = payload;
 
   try {
+    // Handle project slug (starts with -)
+    if (folderPath?.startsWith('-')) {
+      folderPath = slugToPath(folderPath);
+    }
+
     // Validate path (prevent directory traversal and restrict to allowed dirs)
     const resolvedPath = validatePath(folderPath, context);
 

@@ -1,6 +1,8 @@
 <script setup>
-import { onMounted, onUnmounted, provide, ref } from 'vue';
+import { computed, onMounted, onUnmounted, provide, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import CommandPalette from './components/CommandPalette.vue';
+import FilePicker from './components/FilePicker.vue';
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal.vue';
 import PwaPrompt from './components/PwaPrompt.vue';
 import SettingsModal from './components/SettingsModal.vue';
@@ -16,6 +18,13 @@ const {
   send,
   onMessage,
 } = useWebSocket();
+
+const route = useRoute();
+const router = useRouter();
+
+// Provide selected file path for ChatView to pick up
+const selectedFilePath = ref(null);
+provide('selectedFilePath', selectedFilePath);
 
 // Settings state
 const showSettings = ref(false);
@@ -71,6 +80,9 @@ onMessage((msg) => {
 // Command palette state
 const showPalette = ref(false);
 
+// File picker state
+const showFilePicker = ref(false);
+
 function handleGlobalKeydown(e) {
   // Ctrl+K or Cmd+K: Open command palette
   if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -78,6 +90,14 @@ function handleGlobalKeydown(e) {
     showPalette.value = true;
     // Refresh sessions when opening palette (immediate for user action)
     getRecentSessionsImmediate();
+  }
+  // Ctrl+P or Cmd+P: Open file picker (only in project/session context)
+  if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+    e.preventDefault();
+    // Only open if we're in a project context
+    if (route.params.project) {
+      showFilePicker.value = true;
+    }
   }
   // Ctrl+B or Cmd+B: Toggle sidebar
   if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
@@ -98,6 +118,48 @@ function handleGlobalKeydown(e) {
 
 function closePalette() {
   showPalette.value = false;
+}
+
+function closeFilePicker() {
+  showFilePicker.value = false;
+}
+
+function handleFileSelect(file) {
+  // Set the selected file path for ChatView to pick up
+  selectedFilePath.value = file.path;
+
+  // Navigate to the current session with file mode
+  const projectSlug = route.params.project;
+  const sessionId = route.params.session;
+
+  if (projectSlug && sessionId) {
+    // Already in a session, navigate with mode and file query params
+    if (file.isDirectory) {
+      // For folders, navigate to Files mode and browse to that folder
+      router.push({
+        name: 'chat',
+        params: { project: projectSlug, session: sessionId },
+        query: { mode: 'files', folder: file.path },
+      });
+    } else {
+      // For files, open in editor
+      router.push({
+        name: 'chat',
+        params: { project: projectSlug, session: sessionId },
+        query: { mode: 'files', file: file.path },
+      });
+    }
+    // Close the file picker after navigation
+    closeFilePicker();
+  } else if (projectSlug) {
+    // In project view, navigate to the most recent session or create new
+    // For now, just go to sessions view
+    router.push({
+      name: 'sessions',
+      params: { project: projectSlug },
+    });
+    closeFilePicker();
+  }
 }
 
 // Sidebar state - shared across all pages
@@ -163,6 +225,11 @@ onUnmounted(() => {
       :show="showPalette"
       :sessions="recentSessions"
       @close="closePalette"
+    />
+    <FilePicker
+      :show="showFilePicker"
+      @close="closeFilePicker"
+      @select="handleFileSelect"
     />
     <SettingsModal
       :show="showSettings"
