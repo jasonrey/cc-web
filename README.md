@@ -301,6 +301,7 @@ The PWA updates independently from the backend npm package. For full updates (ba
 
 Independent security assessments are conducted before each release to ensure user safety:
 
+- **[v1.0.4 Security Report](./docs/security_report_v1.0.4.md)** - Code review, file access hardening, session security, dependency audit
 - **[v1.0.3 Security Report](./docs/security_report_v1.0.3.md)** - WebSocket auth, file access, CORS, penetration testing
 
 All security reports are publicly available in the `docs/` folder for transparency.

@@ -378,6 +378,7 @@ async function executePrompt(ws, projectSlug, sessionId, prompt, options = {}) {
               pendingQuestions.set(block.id, {
                 sessionId: taskSessionId,
                 toolUseId: block.id,
+                createdAt: Date.now(),
               });
               logger.log(
                 `[prompt] Stored pending question ${block.id} for later answer`,
@@ -433,6 +434,7 @@ async function executePrompt(ws, projectSlug, sessionId, prompt, options = {}) {
     }
 
     task.status = 'completed';
+    task.stream = null; // Release stream reference to free memory
     broadcastTaskStatus(taskSessionId, {
       type: 'task_status',
       taskId: task.id,
@@ -443,6 +445,7 @@ async function executePrompt(ws, projectSlug, sessionId, prompt, options = {}) {
   } catch (error) {
     task.status = 'error';
     task.error = error.message;
+    task.stream = null; // Release stream reference on error too
 
     // Log detailed error information
     console.error(`\n========== Task ${task.id} Error ==========`);

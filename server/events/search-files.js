@@ -1,7 +1,8 @@
-import { realpathSync } from 'node:fs';
+import { existsSync, realpathSync } from 'node:fs';
 import fs from 'node:fs/promises';
+import { homedir } from 'node:os';
 import path from 'node:path';
-import { slugToPath } from '../config.js';
+import { config, slugToPath } from '../config.js';
 import { send } from '../lib/ws.js';
 
 /**
@@ -140,6 +141,58 @@ async function searchFiles(
 }
 
 /**
+ * Validate that a search path is within allowed directories
+ * @param {string} requestedPath - Path to validate
+ * @param {object} context - WebSocket context with project info
+ * @returns {string} Validated resolved path
+ * @throws {Error} If path is outside allowed directories
+ */
+function validateSearchPath(requestedPath, context) {
+  const resolved = path.resolve(requestedPath);
+
+  // If --root is set, enforce strict root restriction
+  if (config.rootPath) {
+    const resolvedPath = existsSync(resolved)
+      ? realpathSync(resolved)
+      : resolved;
+    const resolvedRoot = realpathSync(config.rootPath);
+    const relativePath = path.relative(resolvedRoot, resolvedPath);
+
+    if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+      throw new Error(
+        `Access denied: search path outside root (${config.rootPath})`,
+      );
+    }
+
+    return resolvedPath;
+  }
+
+  // Default behavior (no --root set): Allow home directory and project
+  const allowedRoots = [homedir()];
+
+  if (context?.currentProjectPath) {
+    const projectPath = context.currentProjectPath.startsWith('-')
+      ? slugToPath(context.currentProjectPath)
+      : context.currentProjectPath;
+    allowedRoots.push(path.resolve(projectPath));
+  }
+
+  const isAllowed = allowedRoots.some((root) => {
+    const normalizedRoot = path.resolve(root);
+    return (
+      resolved === normalizedRoot ||
+      resolved.startsWith(normalizedRoot + path.sep)
+    );
+  });
+
+  if (!isAllowed) {
+    throw new Error('Access denied: search path outside allowed directories');
+  }
+
+  return resolved;
+}
+
+/**
  * Handle files:search WebSocket event
  */
 export async function handleFilesSearch(ws, payload, context) {
@@ -159,8 +212,10 @@ export async function handleFilesSearch(ws, payload, context) {
       ? slugToPath(projectSlugOrPath)
       : projectSlugOrPath;
 
+    // SECURITY: Validate search path is within allowed directories
+    const resolvedPath = validateSearchPath(actualPath, context);
+
     // Validate path exists and is a directory
-    const resolvedPath = realpathSync(actualPath);
     const stats = await fs.stat(resolvedPath);
 
     if (!stats.isDirectory()) {

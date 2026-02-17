@@ -11,8 +11,31 @@
 import { logger } from '../lib/logger.js';
 import { send } from '../lib/ws.js';
 
-// Map of toolUseId -> { resolve, reject, sessionId }
+// Map of toolUseId -> { resolve, reject, sessionId, createdAt }
 export const pendingQuestions = new Map();
+
+// TTL for pending questions (10 minutes)
+const PENDING_QUESTION_TTL_MS = 10 * 60 * 1000;
+
+/**
+ * Clean up expired pending questions to prevent memory leaks
+ */
+function cleanupExpiredQuestions() {
+  const now = Date.now();
+  for (const [toolUseId, pending] of pendingQuestions) {
+    if (now - pending.createdAt > PENDING_QUESTION_TTL_MS) {
+      pendingQuestions.delete(toolUseId);
+      logger.log(
+        `[answer_question] Cleaned up expired pending question: ${toolUseId}`,
+      );
+    }
+  }
+}
+
+// Run cleanup every 5 minutes
+const cleanupInterval = setInterval(cleanupExpiredQuestions, 5 * 60 * 1000);
+// Allow process to exit without waiting for interval
+if (cleanupInterval.unref) cleanupInterval.unref();
 
 /**
  * Handle answer_question WebSocket event
@@ -47,6 +70,23 @@ export async function handler(ws, message, context) {
     send(ws, {
       type: 'error',
       message: 'No pending question found for this toolUseId',
+      sessionId: context.currentSessionId,
+    });
+    return;
+  }
+
+  // SECURITY: Verify the answering client owns the session that asked the question
+  if (
+    context.currentSessionId &&
+    pending.sessionId &&
+    context.currentSessionId !== pending.sessionId
+  ) {
+    logger.log(
+      `[answer_question] Session mismatch: client=${context.currentSessionId}, question=${pending.sessionId}`,
+    );
+    send(ws, {
+      type: 'error',
+      message: 'Session mismatch: cannot answer questions from another session',
       sessionId: context.currentSessionId,
     });
     return;

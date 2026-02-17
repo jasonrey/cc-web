@@ -5,17 +5,20 @@ All notable changes to tofucode.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.4] - Unreleased
+## [1.0.4] - 2026-02-17
 
 ### Added
 - **Fuzzy file picker (Cmd+P)** - Quick file search and navigation with folder support and glob patterns
 - **PWA cache clear button** - Force clear service worker cache and update to latest version
 - **AskUserQuestion modal** - Interactive answer UI with option cards and text input
 - **Memo feature (Cmd+M)** - Quick-access overlay for TODO.md or custom notes file
+- **File reference from picker** - Reference files directly from Cmd+P picker into chat input
+- **Tab key handling in markdown editor** - Tab/Shift+Tab to indent/dedent list items in file editor
 
 ### Changed
 - Settings UI improvements (inline reset button, connection status pill)
 - Plan content max-height reduced to 400px
+- File picker auto-scrolls selected item into view during keyboard navigation
 
 ### Fixed
 - Git diff modal project context
@@ -23,6 +26,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AskUserQuestion session handling and answer delivery
 - Memo editor focus behavior
 - New session message visibility during route transition
+
+### Security
+- Added path validation to file search handler (prevents directory enumeration outside allowed paths)
+- Added session ownership check for AskUserQuestion answers (prevents cross-session injection)
+- Added TTL expiry for pending questions map (prevents memory leak)
+- Clean up SDK stream reference after task completion (prevents memory retention)
+- Properly clean up tab key event listeners on component unmount
+- Removed unauthenticated debug endpoint (`/api/debug/ws-config`)
 
 ### Removed
 - Screenshot generation scripts

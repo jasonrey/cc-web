@@ -30,6 +30,8 @@ const isSaving = ref(false);
 const textareaRef = ref(null);
 const mdEditorRef = ref(null);
 let tinyMdeInstance = null;
+let tabKeyHandler = null;
+let tabKeyElement = null;
 
 // Get settings
 const settingsContext = inject('settings');
@@ -259,17 +261,31 @@ function handleMarkdownTab(event) {
 
 // Setup tab key handling for markdown editor
 function setupMarkdownTabHandling() {
+  // Clean up previous listener if any
+  cleanupTabKeyHandler();
+
   if (!mdEditorRef.value) return;
 
   const editorElement = mdEditorRef.value.querySelector('.TinyMDE');
   if (!editorElement) return;
 
-  editorElement.addEventListener('keydown', (event) => {
+  tabKeyHandler = (event) => {
     if (event.key === 'Tab') {
       event.preventDefault();
       handleMarkdownTab(event);
     }
-  });
+  };
+  tabKeyElement = editorElement;
+  editorElement.addEventListener('keydown', tabKeyHandler);
+}
+
+// Clean up tab key event listener
+function cleanupTabKeyHandler() {
+  if (tabKeyHandler && tabKeyElement) {
+    tabKeyElement.removeEventListener('keydown', tabKeyHandler);
+    tabKeyHandler = null;
+    tabKeyElement = null;
+  }
 }
 
 // Watch for content changes from parent (new file loaded)
@@ -292,6 +308,7 @@ watch(
   async ([type, loading]) => {
     // Clean up old instance first
     if (tinyMdeInstance) {
+      cleanupTabKeyHandler();
       tinyMdeInstance = null;
     }
 
@@ -465,6 +482,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeydown);
+  cleanupTabKeyHandler();
   tinyMdeInstance = null;
   if (autoSaveTimeout) {
     clearTimeout(autoSaveTimeout);

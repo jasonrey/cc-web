@@ -161,14 +161,6 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
-// Debug endpoint to check WebSocket compression config
-app.get('/api/debug/ws-config', (_req, res) => {
-  res.json({
-    perMessageDeflate: wss.options.perMessageDeflate,
-    noServer: wss.options.noServer,
-  });
-});
-
 // Auth status - check if setup is needed
 app.get('/api/auth/status', (req, res) => {
   if (isAuthDisabled()) {
