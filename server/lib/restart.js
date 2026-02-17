@@ -29,13 +29,26 @@ export async function restartWithInvertedSpawn(reason, newVersion = null) {
   const restartToken = randomBytes(16).toString('hex');
   console.log(`[RESTART] Generated restart token: ${restartToken}`);
 
-  // Spawn new server process (detached, will outlive this process)
-  const spawnArgs = process.argv.slice(1);
-  console.log(
-    `[RESTART] About to spawn: ${process.execPath} ${spawnArgs.join(' ')}`,
-  );
+  // For upgrades, spawn the 'tofucode' command to use newly installed version
+  // For regular restarts, re-run the same script
+  let spawnCmd, spawnArgs;
+  if (reason === 'upgrade') {
+    // Spawn 'tofucode' command (which now points to upgraded version)
+    spawnCmd = 'tofucode';
+    spawnArgs = process.argv.slice(2); // Skip node and script, keep CLI args
+    console.log(
+      `[RESTART] Upgrade: spawning tofucode command: ${spawnCmd} ${spawnArgs.join(' ')}`,
+    );
+  } else {
+    // Regular restart: re-run same script
+    spawnCmd = process.execPath;
+    spawnArgs = process.argv.slice(1);
+    console.log(
+      `[RESTART] Regular restart: spawning: ${spawnCmd} ${spawnArgs.join(' ')}`,
+    );
+  }
 
-  const newProc = spawn(process.execPath, spawnArgs, {
+  const spawnOptions = {
     detached: true,
     stdio: 'ignore',
     env: {
@@ -46,7 +59,14 @@ export async function restartWithInvertedSpawn(reason, newVersion = null) {
       UPGRADE_MAX_RETRIES: process.env.UPGRADE_MAX_RETRIES || '20',
       UPGRADE_RETRY_INTERVAL: process.env.UPGRADE_RETRY_INTERVAL || '1000',
     },
-  });
+  };
+
+  // For upgrades, need shell to resolve 'tofucode' command in PATH
+  if (reason === 'upgrade') {
+    spawnOptions.shell = true;
+  }
+
+  const newProc = spawn(spawnCmd, spawnArgs, spawnOptions);
 
   newProc.unref(); // Allow this process to exit independently
 
