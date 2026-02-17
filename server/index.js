@@ -400,7 +400,20 @@ async function startServer() {
     );
     process.exit(1);
   } else {
-    // Normal startup
+    // Normal startup - fail fast if port is already in use
+    server.once('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        logger.error(
+          `❌ Port ${config.port} is already in use. Stop the existing process first.`,
+        );
+        logger.error(`   Check with: lsof -i :${config.port}`);
+        logger.error(`   Or try: tofucode stop`);
+        process.exit(1);
+      } else {
+        logger.error(`❌ Server error: ${err.message}`);
+        process.exit(1);
+      }
+    });
     server.listen(config.port, onServerReady);
   }
 }

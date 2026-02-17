@@ -183,6 +183,34 @@ if (!existsSync(distPath)) {
   process.exit(1);
 }
 
+// Guard: Check if port is already in use (unless upgrade mode)
+if (!process.env.IS_RESTART || process.env.UPGRADE_RETRY_BIND !== 'true') {
+  const { createServer } = await import('net');
+  const testServer = createServer();
+
+  try {
+    await new Promise((resolve, reject) => {
+      testServer.once('error', reject);
+      testServer.once('listening', () => {
+        testServer.close();
+        resolve();
+      });
+      testServer.listen(options.port);
+    });
+  } catch (err) {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`Error: Port ${options.port} is already in use.`);
+      console.error('');
+      console.error('Solutions:');
+      console.error(`  1. Stop the existing process: tofucode stop`);
+      console.error(`  2. Use a different port: tofucode start -p <other-port>`);
+      console.error(`  3. Find what's using it: lsof -i :${options.port}`);
+      process.exit(1);
+    }
+    // Other errors are fine, let the server handle them
+  }
+}
+
 // Set environment variables
 const env = {
   ...process.env,
@@ -414,39 +442,85 @@ async function handleStop() {
 
 async function handleRestart() {
   const pidFile = getPidFile();
+  const restartLockFile = join(dirname(pidFile), 'tofucode.restart.lock');
 
-  if (existsSync(pidFile)) {
-    console.log('Stopping existing daemon...');
-    await handleStop();
-    console.log('');
-  } else {
-    console.log('No running daemon found');
-  }
-
-  console.log('Starting tofucode...');
-
-  // Re-parse args without --restart and add --daemon
-  const newArgs = args.filter(arg => arg !== '--restart');
-  if (!newArgs.includes('--daemon') && !newArgs.includes('-d')) {
-    newArgs.push('--daemon');
-  }
-
-  // Spawn new CLI instance (not detached) so we can see startup errors
-  // The new CLI will handle daemon spawning with proper detachment
-  const cliPath = fileURLToPath(import.meta.url);
-  const child = spawn('node', [cliPath, ...newArgs], {
-    stdio: 'inherit',
-  });
-
-  // Wait for new CLI to exit (it will exit after spawning daemon)
-  child.on('exit', (code) => {
-    if (code === 0) {
-      console.log('Restart completed successfully');
+  // Guard: Check if restart is already in progress
+  if (existsSync(restartLockFile)) {
+    const lockAge = Date.now() - statSync(restartLockFile).mtimeMs;
+    if (lockAge < 30000) {
+      // Lock less than 30 seconds old
+      console.error('Error: Restart already in progress (lock file exists)');
+      console.error(`Lock file: ${restartLockFile}`);
+      console.error('If stuck, remove lock file manually or wait 30 seconds');
+      process.exit(1);
     } else {
-      console.error(`Restart failed with exit code ${code}`);
+      // Stale lock, remove it
+      console.log('Removing stale restart lock...');
+      unlinkSync(restartLockFile);
     }
-    process.exit(code || 0);
-  });
+  }
+
+  // Create restart lock
+  try {
+    writeFileSync(restartLockFile, Date.now().toString(), 'utf8');
+  } catch (err) {
+    console.error(`Error: Failed to create restart lock: ${err.message}`);
+    process.exit(1);
+  }
+
+  try {
+    if (existsSync(pidFile)) {
+      console.log('Stopping existing daemon...');
+      await handleStop();
+      console.log('');
+    } else {
+      console.log('No running daemon found');
+    }
+
+    console.log('Starting tofucode...');
+
+    // Re-parse args without --restart and add --daemon
+    const newArgs = args.filter(arg => arg !== '--restart' && arg !== 'restart');
+    if (!newArgs.includes('--daemon') && !newArgs.includes('-d')) {
+      newArgs.push('--daemon');
+    }
+
+    // Spawn new CLI instance (not detached) so we can see startup errors
+    // The new CLI will handle daemon spawning with proper detachment
+    const cliPath = fileURLToPath(import.meta.url);
+    const child = spawn('node', [cliPath, 'start', ...newArgs], {
+      stdio: 'inherit',
+    });
+
+    // Wait for new CLI to exit (it will exit after spawning daemon)
+    child.on('exit', (code) => {
+      // Remove restart lock
+      try {
+        if (existsSync(restartLockFile)) {
+          unlinkSync(restartLockFile);
+        }
+      } catch (err) {
+        console.error(`Warning: Failed to remove restart lock: ${err.message}`);
+      }
+
+      if (code === 0) {
+        console.log('Restart completed successfully');
+      } else {
+        console.error(`Restart failed with exit code ${code}`);
+      }
+      process.exit(code || 0);
+    });
+  } catch (err) {
+    // Remove restart lock on error
+    try {
+      if (existsSync(restartLockFile)) {
+        unlinkSync(restartLockFile);
+      }
+    } catch (_err) {
+      // Ignore cleanup errors
+    }
+    throw err;
+  }
 }
 
 async function handleStatus() {
