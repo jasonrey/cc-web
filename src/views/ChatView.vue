@@ -406,7 +406,13 @@ function handleKeydown(e) {
     }
     if (e.key === '2') {
       e.preventDefault();
-      currentMode.value = 'terminal';
+      // If already in terminal mode, toggle between active/history tabs
+      if (currentMode.value === 'terminal') {
+        terminalSubTab.value =
+          terminalSubTab.value === 'active' ? 'history' : 'active';
+      } else {
+        currentMode.value = 'terminal';
+      }
       nextTick(() => {
         // Initialize CWD if needed
         if (!terminalCwd.value && projectStatus.value.cwd) {
