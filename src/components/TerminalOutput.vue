@@ -26,6 +26,7 @@ const emit = defineEmits([
 ]);
 
 const historyContentRef = ref(null);
+const activeContentRef = ref(null);
 
 // Local expanded state - new processes start expanded
 const localExpandedState = ref(new Map());
@@ -54,10 +55,12 @@ const allProcesses = computed(() =>
   [...props.processes].sort((a, b) => a.startedAt - b.startedAt),
 );
 
-// Scroll history to bottom
+// Scroll to bottom (works for both active and history tabs)
 function scrollHistoryToBottom() {
-  if (historyContentRef.value) {
-    historyContentRef.value.scrollTop = historyContentRef.value.scrollHeight;
+  const activeRef =
+    props.activeTab === 'history' ? historyContentRef : activeContentRef;
+  if (activeRef.value) {
+    activeRef.value.scrollTop = activeRef.value.scrollHeight;
   }
 }
 
@@ -158,12 +161,17 @@ async function copyOutput(proc, e) {
     console.error('Failed to copy:', err);
   }
 }
+
+// Expose scrollHistoryToBottom for parent component
+defineExpose({
+  scrollHistoryToBottom,
+});
 </script>
 
 <template>
   <div class="terminal-output">
     <!-- Active Tab Content -->
-    <div class="tab-content" v-if="activeTab === 'active'">
+    <div class="tab-content" v-if="activeTab === 'active'" ref="activeContentRef">
       <div v-if="runningProcesses.length > 0" class="process-list">
         <div
           v-for="proc in runningProcesses"

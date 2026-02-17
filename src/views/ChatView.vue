@@ -107,6 +107,7 @@ const terminalSubTab = ref('history'); // 'active' | 'history'
 const terminalInput = ref('');
 const terminalCwd = ref(''); // Editable CWD for terminal commands
 const terminalInputRef = ref(null);
+const terminalOutputRef = ref(null);
 const pathEditInputRef = ref(null);
 const manualExpandState = ref(new Map()); // Map<processId, boolean> for user-toggled items
 
@@ -440,10 +441,16 @@ function handleKeydown(e) {
       return;
     }
 
-    // Ctrl+L or Cmd+L: Scroll to bottom (clear view) in chat mode
-    if (e.key === 'l' && !terminalMode.value) {
+    // Ctrl+L or Cmd+L: Scroll to bottom (clear view)
+    if (e.key === 'l') {
       e.preventDefault();
-      scrollToBottom();
+      if (terminalMode.value) {
+        // In terminal mode: scroll terminal output to bottom
+        terminalOutputRef.value?.scrollHistoryToBottom();
+      } else {
+        // In chat mode: scroll chat to bottom
+        scrollToBottom();
+      }
       return;
     }
 
@@ -2073,6 +2080,7 @@ watch(
     <!-- Terminal Mode -->
     <main v-else-if="currentMode === 'terminal'" class="terminal">
       <TerminalOutput
+        ref="terminalOutputRef"
         :processes="terminalProcesses"
         :expanded-history="expandedHistory"
         :active-tab="terminalSubTab"
