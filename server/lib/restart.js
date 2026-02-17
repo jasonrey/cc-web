@@ -10,6 +10,55 @@ import { join, resolve } from 'node:path';
 import { logger } from './logger.js';
 
 /**
+ * Reconstruct CLI arguments from environment variables
+ * The CLI converts flags to env vars before spawning the server,
+ * so we need to reverse this process when restarting.
+ * @returns {string[]} CLI arguments
+ */
+function buildCliArgsFromEnv() {
+  const args = [];
+
+  if (process.env.PORT) {
+    args.push('--port', process.env.PORT);
+  }
+
+  if (process.env.HOST && process.env.HOST !== '0.0.0.0') {
+    args.push('--host', process.env.HOST);
+  }
+
+  if (process.env.AUTH_DISABLED === 'true') {
+    args.push('--no-auth');
+  }
+
+  if (process.env.DEBUG === 'true') {
+    args.push('--debug');
+  }
+
+  if (process.env.LOG_FILE) {
+    args.push('--log-file', process.env.LOG_FILE);
+  }
+
+  if (process.env.PID_FILE) {
+    args.push('--pid-file', process.env.PID_FILE);
+  }
+
+  if (process.env.DEBUG_TOKEN) {
+    args.push('--bypass-token', process.env.DEBUG_TOKEN);
+  }
+
+  if (process.env.ROOT_PATH) {
+    args.push('--root', process.env.ROOT_PATH);
+  }
+
+  // If PID_FILE is set, we're in daemon mode
+  if (process.env.PID_FILE) {
+    args.push('-d');
+  }
+
+  return args;
+}
+
+/**
  * Restart server with inverted spawn strategy
  * New process starts first, then old process exits
  *
@@ -34,13 +83,13 @@ export async function restartWithInvertedSpawn(reason, newVersion = null) {
   let spawnCmd, spawnArgs;
   if (reason === 'upgrade') {
     // Spawn 'tofucode' command (which now points to upgraded version)
+    // Reconstruct CLI args from env vars (CLI converts flags to env)
     spawnCmd = 'tofucode';
-    spawnArgs = process.argv.slice(2); // Skip node and script, keep CLI args
+    spawnArgs = buildCliArgsFromEnv();
     console.log(
       `[RESTART] Upgrade: spawning tofucode command: ${spawnCmd} ${spawnArgs.join(' ')}`,
     );
-    console.log(`[RESTART] Original argv: ${JSON.stringify(process.argv)}`);
-    console.log(`[RESTART] Parsed args to pass: ${JSON.stringify(spawnArgs)}`);
+    console.log(`[RESTART] Reconstructed CLI args from env: ${JSON.stringify(spawnArgs)}`);
   } else {
     // Regular restart: re-run same script
     spawnCmd = process.execPath;
