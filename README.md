@@ -95,25 +95,26 @@ On first run:
 ## Usage
 
 ```bash
-# Start server
+# Start server (default command)
 tofucode
+tofucode start
 
 # Custom port and host
-tofucode -p 8080 -h 127.0.0.1
+tofucode start -p 8080 -h 127.0.0.1
 
 # Run as daemon
-tofucode -d
+tofucode start -d
 
-# Stop/restart/status
-tofucode --stop
-tofucode --restart
-tofucode --status
+# Lifecycle management
+tofucode stop
+tofucode restart
+tofucode status
 
 # Restrict access to a specific directory
-tofucode --root /path/to/project
+tofucode start --root /path/to/project
 
 # Use config file
-tofucode --config prod.json
+tofucode start --config prod.json
 
 # See all options
 tofucode --help
@@ -123,8 +124,8 @@ tofucode --help
 
 **Three ways to configure (priority order):**
 
-1. **CLI arguments:** `tofucode -p 8080 --debug`
-2. **Config file:** `tofucode --config prod.json` (see `config.example.json`)
+1. **CLI arguments:** `tofucode start -p 8080 --debug`
+2. **Config file:** `tofucode start --config prod.json` (see `config.example.json`)
 3. **Environment variables:** `PORT=8080 DEBUG=true tofucode`
 
 | Setting | CLI | Config | Env Var |
@@ -139,15 +140,49 @@ tofucode --help
 | Root path | `--root <path>` | `"root": "<path>"` | `ROOT_PATH=<path>` |
 | Disable update check | - | - | `DISABLE_UPDATE_CHECK=true` |
 | Update check interval | - | - | `UPDATE_CHECK_INTERVAL=3600000` |
+| Model: Haiku | - | - | `MODEL_HAIKU_SLUG=claude-haiku-4-5` |
+| Model: Sonnet | - | - | `MODEL_SONNET_SLUG=claude-sonnet-4-6` |
+| Model: Opus | - | - | `MODEL_OPUS_SLUG=claude-opus-4-6` |
 
 Run `tofucode --help` for all options.
+
+### Model Configuration
+
+By default, tofucode uses the latest Claude model versions:
+- **Haiku:** `claude-haiku-4-5`
+- **Sonnet:** `claude-sonnet-4-6`
+- **Opus:** `claude-opus-4-6`
+
+You can override these defaults using environment variables:
+
+```bash
+# Use specific model versions
+MODEL_SONNET_SLUG=claude-sonnet-4-5-20250929 \
+MODEL_OPUS_SLUG=claude-opus-4-5-20251101 \
+tofucode
+```
+
+Or in your `.env` file:
+
+```bash
+MODEL_HAIKU_SLUG=claude-haiku-4-5
+MODEL_SONNET_SLUG=claude-sonnet-4-6
+MODEL_OPUS_SLUG=claude-opus-4-6
+```
+
+This allows you to:
+- Pin to specific model versions with snapshot dates
+- Use legacy models if needed
+- Test new models as they're released
+
+See the [Anthropic Models documentation](https://docs.anthropic.com/en/docs/models-overview) for all available model identifiers.
 
 ### Security: Root Path Restriction
 
 Use `--root` to restrict file and terminal access to a specific directory:
 
 ```bash
-tofucode --root /home/user/projects/myapp
+tofucode start --root /home/user/projects/myapp
 ```
 
 **What it does:**
@@ -285,7 +320,7 @@ The PWA uses service workers to detect when the frontend code changes:
 3. **One-click update** - Click "Update" to activate the new version instantly
 4. **Content-addressed caching** - Any JS/CSS change triggers an update notification
 
-The PWA updates independently from the backend npm package. For full updates (backend + frontend), use `tofucode --upgrade` or the upgrade button in settings.
+The PWA updates independently from the backend npm package. For full updates (backend + frontend), use the upgrade button in settings.
 
 ---
 
@@ -301,6 +336,7 @@ The PWA updates independently from the backend npm package. For full updates (ba
 
 Independent security assessments are conducted before each release to ensure user safety:
 
+- **[v1.0.5 Security Report](./docs/security_report_v1.0.5.md)** - Command injection fix, input validation hardening, DoS protection
 - **[v1.0.4 Security Report](./docs/security_report_v1.0.4.md)** - Code review, file access hardening, session security, dependency audit
 - **[v1.0.3 Security Report](./docs/security_report_v1.0.3.md)** - WebSocket auth, file access, CORS, penetration testing
 

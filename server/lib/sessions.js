@@ -51,18 +51,53 @@ export async function getSessionsList(projectSlug) {
       for (const entry of data.entries || []) {
         const jsonlPath = join(sessionsDir, `${entry.sessionId}.jsonl`);
         let modified = entry.modified;
+        let messageCount = entry.messageCount || 0;
+
         if (existsSync(jsonlPath)) {
           try {
             const stats = statSync(jsonlPath);
             modified = stats.mtime.toISOString();
+
+            // Recount displayable messages from JSONL (SDK includes system messages in index)
+            messageCount = 0;
+            await new Promise((resolve, reject) => {
+              const rl = createInterface({
+                input: createReadStream(jsonlPath),
+                crlfDelay: Number.POSITIVE_INFINITY,
+              });
+
+              rl.on('line', (line) => {
+                if (line.trim()) {
+                  try {
+                    const msgEntry = JSON.parse(line);
+                    // Only count displayable message types
+                    if (
+                      msgEntry.type === 'user' ||
+                      msgEntry.type === 'human' ||
+                      msgEntry.type === 'assistant' ||
+                      msgEntry.type === 'tool_result'
+                    ) {
+                      messageCount++;
+                    }
+                  } catch {
+                    // Skip malformed lines
+                  }
+                }
+              });
+
+              rl.on('close', () => resolve());
+              rl.on('error', reject);
+            });
           } catch {
-            // Fall back to index modified if stat fails
+            // Fall back to index values if streaming fails
+            messageCount = entry.messageCount || 0;
           }
         }
+
         sessionsMap.set(entry.sessionId, {
           sessionId: entry.sessionId,
           firstPrompt: entry.firstPrompt?.substring(0, 100) || 'No prompt',
-          messageCount: entry.messageCount || 0,
+          messageCount,
           created: entry.created,
           modified,
           // Use .session-titles.json (SDK overwrites sessions-index.json customTitle)
@@ -87,23 +122,33 @@ export async function getSessionsList(projectSlug) {
               let messageCount = 0;
 
               try {
-                // Use streaming to count lines and get first line
+                // Use streaming to count displayable messages and get first user prompt
                 await new Promise((resolve, reject) => {
                   const rl = createInterface({
                     input: createReadStream(jsonlPath),
                     crlfDelay: Number.POSITIVE_INFINITY,
                   });
 
-                  let firstLine = null;
+                  let firstUserPromptFound = false;
                   rl.on('line', (line) => {
                     if (line.trim()) {
-                      messageCount++;
-                      if (!firstLine) {
-                        firstLine = line;
-                        // Parse first line for prompt text
-                        try {
-                          const entry = JSON.parse(line);
-                          if (entry.type === 'user' && entry.message?.content) {
+                      try {
+                        const entry = JSON.parse(line);
+                        // Only count displayable message types (exclude system, summary, etc.)
+                        if (
+                          entry.type === 'user' ||
+                          entry.type === 'human' ||
+                          entry.type === 'assistant' ||
+                          entry.type === 'tool_result'
+                        ) {
+                          messageCount++;
+
+                          // Get first user prompt for display
+                          if (
+                            !firstUserPromptFound &&
+                            (entry.type === 'user' || entry.type === 'human') &&
+                            entry.message?.content
+                          ) {
                             const contentText =
                               typeof entry.message.content === 'string'
                                 ? entry.message.content
@@ -112,12 +157,15 @@ export async function getSessionsList(projectSlug) {
                                       .filter((b) => b.type === 'text')
                                       .map((b) => b.text)
                                       .join(' ')
-                                  : 'New session';
-                            firstPrompt = contentText.substring(0, 100);
+                                  : '';
+                            if (contentText.trim()) {
+                              firstPrompt = contentText.substring(0, 100);
+                              firstUserPromptFound = true;
+                            }
                           }
-                        } catch {
-                          // Couldn't parse first line, keep default
                         }
+                      } catch {
+                        // Skip malformed lines
                       }
                     }
                   });
@@ -208,7 +256,7 @@ function parseEntry(entry) {
   // Assistant messages
   if (entry.type === 'assistant') {
     const blocks = entry.message?.content || [];
-    // Extract model name from full model string (e.g., "claude-sonnet-4-5-20250929" -> "sonnet")
+    // Extract model name from full model string (e.g., "claude-sonnet-4-6" -> "sonnet")
     let modelName = null;
     if (entry.message?.model) {
       const fullModel = entry.message.model;
@@ -306,14 +354,30 @@ export async function loadSessionHistory(projectSlug, sessionId, options = {}) {
     };
   }
 
-  const {
-    fullHistory = false,
-    limit = 100,
-    offset = 0,
-    maxBufferSize = 500,
-    loadLastTurn = false, // New option: load from last user message to end
-    turnLimit = null, // If set, load by turn count instead of entry count
-  } = options;
+  const { fullHistory = false, loadLastTurn = false } = options;
+
+  // SECURITY: Sanitize and clamp pagination parameters to prevent abuse
+  const rawOffset = Number.isInteger(options.offset)
+    ? options.offset
+    : Number.parseInt(options.offset, 10) || 0;
+  const rawLimit = Number.isInteger(options.limit)
+    ? options.limit
+    : Number.parseInt(options.limit, 10) || 100;
+  const rawMaxBufferSize = Number.isInteger(options.maxBufferSize)
+    ? options.maxBufferSize
+    : Number.parseInt(options.maxBufferSize, 10) || 5000;
+  const rawTurnLimit =
+    options.turnLimit != null
+      ? Number.isInteger(options.turnLimit)
+        ? options.turnLimit
+        : Number.parseInt(options.turnLimit, 10)
+      : null;
+
+  const limit = Math.max(1, Math.min(rawLimit, 500));
+  const offset = Math.max(0, Math.min(rawOffset, 100000));
+  const maxBufferSize = Math.max(100, Math.min(rawMaxBufferSize, 10000));
+  const turnLimit =
+    rawTurnLimit != null ? Math.max(1, Math.min(rawTurnLimit, 50)) : null;
 
   // Use circular buffer to limit memory usage
   const buffer = [];
@@ -427,11 +491,15 @@ export async function loadSessionHistory(projectSlug, sessionId, options = {}) {
           // Load from earliest found user message to searchEnd
           const startIdx = userIndices[userIndices.length - 1];
           entriesToParse = buffer.slice(startIdx, searchEnd);
-          effectiveOffset = buffer.length - searchEnd;
+          // effectiveOffset = how many entries from end of buffer are NOT yet loaded
+          // Next request should search up to startIdx, so offset = buffer.length - startIdx
+          // If startIdx === 0, we've reached the beginning of the buffer - no more to load
+          effectiveOffset = startIdx === 0 ? 0 : buffer.length - startIdx;
         } else {
-          // No turns found, return empty
-          entriesToParse = [];
-          effectiveOffset = offset;
+          // No user turns found before searchEnd - load whatever remains (e.g. summary)
+          // and signal no more older messages
+          entriesToParse = buffer.slice(0, searchEnd);
+          effectiveOffset = 0;
         }
       } else if (loadLastTurn && offset === 0) {
         // INITIAL LOAD: Load last N turns (specified by turnLimit in initial call)
@@ -452,17 +520,19 @@ export async function loadSessionHistory(projectSlug, sessionId, options = {}) {
         if (userIndices.length === 3) {
           const startIdx = userIndices[2]; // Third-to-last user message
           entriesToParse = buffer.slice(startIdx);
-          effectiveOffset = buffer.length - entriesToParse.length;
+          // effectiveOffset = entries from end to skip on next load = buffer.length - startIdx
+          // (next searchEnd = buffer.length - effectiveOffset = startIdx, searching [0..startIdx))
+          effectiveOffset = startIdx === 0 ? 0 : buffer.length - startIdx;
         } else if (userIndices.length > 0) {
-          // Less than 3 turns - load from earliest found
+          // Less than 3 turns total - loaded everything, no older messages
           const startIdx = userIndices[userIndices.length - 1];
           entriesToParse = buffer.slice(startIdx);
-          effectiveOffset = buffer.length - entriesToParse.length;
+          effectiveOffset = 0; // Loaded all turns, nothing older
         } else {
           // No user message found, fall back to limit-based loading
           const startIdx = Math.max(0, buffer.length - limit);
           entriesToParse = buffer.slice(startIdx);
-          effectiveOffset = buffer.length - entriesToParse.length;
+          effectiveOffset = startIdx === 0 ? 0 : buffer.length - startIdx;
         }
       } else {
         // ENTRY-BASED FALLBACK: Standard pagination by entry count
@@ -478,15 +548,19 @@ export async function loadSessionHistory(projectSlug, sessionId, options = {}) {
         messages.push(...parsed);
       }
 
-      // hasOlderMessages based on entries, not messages (one entry can expand to multiple messages)
+      // hasOlderMessages: check if there are more entries before what we loaded,
+      // within the buffer (which stops at summary boundary when fullHistory=false).
+      // Using buffer.length instead of totalLineCount to correctly stop at summary.
+      const hasOlderMessages = effectiveOffset > 0;
+
       resolve({
         messages,
-        hasOlderMessages:
-          effectiveOffset + entriesToParse.length < totalLineCount,
+        hasOlderMessages,
         summaryCount,
         totalEntries: totalLineCount,
         totalTurns: totalSessionTurns, // Total turns in full session history
         loadedTurns: loadedTurnCount,
+        effectiveOffset, // The new offset for the next load request
       });
     });
 

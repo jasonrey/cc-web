@@ -27,6 +27,7 @@ const {
   getRecentSessionsImmediate,
   dismissUpdate,
   send,
+  onMessage,
 } = useWebSocket();
 
 // Upgrade state
@@ -36,6 +37,14 @@ const isUpgrading = ref(false);
 watch(connected, (isConnected) => {
   if (isConnected) {
     isUpgrading.value = false;
+  }
+});
+
+// Listen for upgrade errors
+onMessage((msg) => {
+  if (msg.type === 'upgrade_error' || msg.type === 'restart_error') {
+    isUpgrading.value = false;
+    alert(`Upgrade failed: ${msg.message}`);
   }
 });
 

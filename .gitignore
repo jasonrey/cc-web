@@ -18,6 +18,9 @@ dist/
 # Auth credentials (password hash + sessions)
 .auth.json
 
+# Local config (machine-specific settings)
+config.json
+
 # Claude Code session data (user-specific)
 .claude/
 

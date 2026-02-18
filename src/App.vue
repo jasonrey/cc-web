@@ -30,6 +30,13 @@ provide('selectedFilePath', selectedFilePath);
 const fileReference = ref(null);
 provide('fileReference', fileReference);
 
+// Usage stats state
+const usageStats = ref(null);
+
+function fetchUsageStats() {
+  send({ type: 'get_usage_stats' });
+}
+
 // Settings state
 const showSettings = ref(false);
 const settings = ref({
@@ -70,7 +77,7 @@ function handleRestart() {
   send({ type: 'restart' });
 }
 
-// Handle settings messages
+// Handle settings and usage messages
 onMessage((msg) => {
   if (msg.type === 'settings') {
     settings.value = msg.settings;
@@ -78,6 +85,8 @@ onMessage((msg) => {
     if (msg.success) {
       settings.value = msg.settings;
     }
+  } else if (msg.type === 'usage_stats') {
+    usageStats.value = msg.stats;
   }
 });
 
@@ -248,9 +257,11 @@ onUnmounted(() => {
       :show="showSettings"
       :settings="settings"
       :connected="connected"
+      :usage-stats="usageStats"
       @close="closeSettings"
       @update="updateSettings"
       @restart="handleRestart"
+      @fetch-usage="fetchUsageStats"
     />
     <KeyboardShortcutsModal
       v-if="showHelp"

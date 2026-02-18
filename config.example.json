@@ -7,5 +7,10 @@
   "quiet": false,
   "logFile": null,
   "pidFile": null,
-  "bypassToken": null
+  "bypassToken": null,
+  "models": {
+    "haiku": "claude-haiku-4-5",
+    "sonnet": "claude-sonnet-4-6",
+    "opus": "claude-opus-4-6"
+  }
 }

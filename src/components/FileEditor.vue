@@ -184,8 +184,7 @@ function scrollToHeading(heading) {
     // If we found the target element, scroll to it
     if (targetElement) {
       const elementTop = targetElement.offsetTop;
-      const viewportHeight = container.clientHeight;
-      const scrollTop = Math.max(0, elementTop - viewportHeight / 3);
+      const scrollTop = Math.max(0, elementTop - 16);
 
       container.scroll({
         top: scrollTop,

@@ -87,12 +87,12 @@ async function searchFiles(
         const relativePath = path.relative(basePath, fullPath);
         const fileName = entry.name.toLowerCase();
 
-        // Check if item matches search criteria
-        let matches = false;
+        // Check if filename matches search criteria
+        let filenameMatches = false;
 
         if (isGlob) {
           // Glob pattern matching (only against filename)
-          matches = globRegex.test(entry.name);
+          filenameMatches = globRegex.test(entry.name);
         } else {
           // Fuzzy match: check if all query chars appear in order
           let queryIndex = 0;
@@ -102,18 +102,43 @@ async function searchFiles(
               if (queryIndex === lowerQuery.length) break;
             }
           }
-          matches = queryIndex === lowerQuery.length;
+          filenameMatches = queryIndex === lowerQuery.length;
         }
+
+        // Check if any folder in the path matches (for files inside matching folders)
+        let folderPathMatches = false;
+        if (!isGlob && !entry.isDirectory()) {
+          // For files, check if any parent folder name matches the query
+          const pathParts = relativePath.split(path.sep);
+          for (let i = 0; i < pathParts.length - 1; i++) {
+            // Check each folder name (exclude the file name itself)
+            const folderName = pathParts[i].toLowerCase();
+            let queryIndex = 0;
+            for (const char of folderName) {
+              if (char === lowerQuery[queryIndex]) {
+                queryIndex++;
+                if (queryIndex === lowerQuery.length) break;
+              }
+            }
+            if (queryIndex === lowerQuery.length) {
+              folderPathMatches = true;
+              break;
+            }
+          }
+        }
+
+        const matches = filenameMatches || folderPathMatches;
 
         if (entry.isDirectory()) {
           // Add matching directories to results
-          if (matches) {
+          if (filenameMatches) {
             results.push({
               name: entry.name,
               path: fullPath,
               relativePath,
               directory: path.dirname(relativePath),
               isDirectory: true,
+              matchType: 'folder', // For sorting priority
             });
           }
           // Always recurse into directories
@@ -127,6 +152,7 @@ async function searchFiles(
               relativePath,
               directory: path.dirname(relativePath),
               isDirectory: false,
+              matchType: filenameMatches ? 'filename' : 'folderpath',
             });
           }
         }
@@ -137,6 +163,23 @@ async function searchFiles(
   }
 
   await search(dirPath, 0);
+
+  // Sort results: folders first, then files by filename match, then by folder path match
+  results.sort((a, b) => {
+    // Folders first
+    if (a.isDirectory && !b.isDirectory) return -1;
+    if (!a.isDirectory && b.isDirectory) return 1;
+
+    // For files, prioritize filename matches over folder path matches
+    if (!a.isDirectory && !b.isDirectory) {
+      if (a.matchType === 'filename' && b.matchType === 'folderpath') return -1;
+      if (a.matchType === 'folderpath' && b.matchType === 'filename') return 1;
+    }
+
+    // Alphabetically by name
+    return a.name.localeCompare(b.name);
+  });
+
   return results;
 }
 

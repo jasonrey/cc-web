@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from 'child_process';
-import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync, unlinkSync, statSync } from 'fs';
 import { dirname, join, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { homedir } from 'os';
@@ -23,18 +23,31 @@ if (args.includes('--version') || args.includes('-v')) {
   process.exit(0);
 }
 
-// Handle lifecycle commands early (--stop, --restart, --status)
-if (args.includes('--stop')) {
+// Parse command (new subcommand syntax: tofucode start|stop|restart|status)
+// Default to 'start' if first arg starts with '-' or no args provided
+let command = 'start';
+let commandArgs = args;
+
+if (args.length > 0 && !args[0].startsWith('-')) {
+  const possibleCommand = args[0].toLowerCase();
+  if (['start', 'stop', 'restart', 'status'].includes(possibleCommand)) {
+    command = possibleCommand;
+    commandArgs = args.slice(1); // Remove command from args
+  }
+}
+
+// Handle lifecycle commands (subcommands or legacy flags)
+if (command === 'stop' || args.includes('--stop')) {
   await handleStop();
   process.exit(0);
 }
 
-if (args.includes('--restart')) {
+if (command === 'restart' || args.includes('--restart')) {
   await handleRestart();
   process.exit(0);
 }
 
-if (args.includes('--status')) {
+if (command === 'status' || args.includes('--status')) {
   await handleStatus();
   process.exit(0);
 }
@@ -53,12 +66,13 @@ const options = {
   root: null,
 };
 
-for (let i = 0; i < args.length; i++) {
-  const arg = args[i];
+// Parse options from commandArgs (after removing subcommand if present)
+for (let i = 0; i < commandArgs.length; i++) {
+  const arg = commandArgs[i];
   if (arg === '--port' || arg === '-p') {
-    options.port = parseInt(args[++i], 10);
+    options.port = parseInt(commandArgs[++i], 10);
   } else if (arg === '--host' || arg === '-h') {
-    options.host = args[++i];
+    options.host = commandArgs[++i];
   } else if (arg === '--no-auth') {
     options.auth = false;
   } else if (arg === '--daemon' || arg === '-d') {
@@ -68,33 +82,33 @@ for (let i = 0; i < args.length; i++) {
   } else if (arg === '--quiet' || arg === '-q') {
     options.quiet = true;
   } else if (arg === '--log-file') {
-    options.logFile = args[++i];
+    options.logFile = commandArgs[++i];
   } else if (arg === '--pid-file') {
-    options.pidFile = args[++i];
+    options.pidFile = commandArgs[++i];
   } else if (arg === '--config' || arg === '-c') {
-    options.config = args[++i];
+    options.config = commandArgs[++i];
   } else if (arg === '--bypass-token') {
-    options.bypassToken = args[++i];
+    options.bypassToken = commandArgs[++i];
   } else if (arg === '--root') {
-    options.root = resolve(args[++i]);
+    options.root = resolve(commandArgs[++i]);
   } else if (arg === '--help') {
     console.log(`
 tofucode - Web UI for Claude Code
 
 Usage:
-  tofucode [options]
-  tofucode --stop              Stop running daemon
-  tofucode --restart           Restart running daemon
-  tofucode --status            Check daemon status
+  tofucode [start] [options]   Start server (default command)
+  tofucode stop                Stop running daemon
+  tofucode restart             Restart running daemon
+  tofucode status              Check daemon status
 
-Options:
+Options (for start command):
   -p, --port <port>          Port to listen on (default: 3000)
   -h, --host <host>          Host to bind to (default: 0.0.0.0)
   --no-auth                  Disable password authentication
   -d, --daemon               Run as background daemon
   --debug                    Enable debug logging
   -q, --quiet                Suppress output (except errors)
-  --log-file <path>          Custom log file path (default: tofucode.log)
+  --log-file <path>          Custom log file path (default: ~/.tofucode/tofucode.log)
   --pid-file <path>          Custom PID file path (default: ~/.tofucode/tofucode.pid)
   -c, --config <path>        Load configuration from JSON file
   --bypass-token <token>     Set bypass token for auth-free access (automation/testing)
@@ -102,10 +116,14 @@ Options:
   -v, --version              Show version number
   --help                     Show this help message
 
-Daemon Management:
-  --stop                     Stop running daemon (uses PID file)
-  --restart                  Restart running daemon
-  --status                   Check if daemon is running
+Lifecycle Commands:
+  start                      Start server (default)
+  stop                       Stop running daemon
+  restart                    Restart running daemon
+  status                     Check daemon status
+
+  Legacy flags (deprecated):
+  --stop, --restart, --status   Old flag syntax (still supported)
 
 Environment Variables:
   PORT                       Alternative way to set port
@@ -115,6 +133,9 @@ Environment Variables:
   LOG_FILE                   Custom log file path
   PID_FILE                   Custom PID file path
   DEBUG_TOKEN                Bypass token for auth-free access (automation/testing)
+  MODEL_HAIKU_SLUG           Claude Haiku model ID (default: claude-haiku-4-5)
+  MODEL_SONNET_SLUG          Claude Sonnet model ID (default: claude-sonnet-4-6)
+  MODEL_OPUS_SLUG            Claude Opus model ID (default: claude-opus-4-6)
 
 Configuration File:
   Use --config to load settings from a JSON file. CLI args override config.
@@ -131,14 +152,15 @@ Configuration File:
 
 Examples:
   tofucode                           # Start on http://0.0.0.0:3000
-  tofucode -p 8080                   # Start on port 8080
-  tofucode --no-auth                 # Disable authentication
-  tofucode -d                        # Run as background daemon
-  tofucode -d --debug                # Daemon with debug logging
-  tofucode --config prod.json -d     # Use config file + daemon mode
-  tofucode --root /path/to/project   # Restrict to specific directory
-  tofucode --stop                    # Stop running daemon
-  tofucode --status                  # Check daemon status
+  tofucode start -p 8080             # Start on port 8080
+  tofucode start --no-auth           # Disable authentication
+  tofucode start -d                  # Run as background daemon
+  tofucode start -d --debug          # Daemon with debug logging
+  tofucode start --config prod.json -d   # Use config file + daemon mode
+  tofucode start --root /path/to/project # Restrict to specific directory
+  tofucode stop                      # Stop running daemon
+  tofucode restart                   # Restart running daemon
+  tofucode status                    # Check daemon status
 
 Security:
   --root restricts file and terminal access to the specified directory on a
@@ -162,6 +184,34 @@ if (!existsSync(distPath)) {
   console.error('If you installed from npm, please report this issue.');
   console.error('If running from source, run: npm run build');
   process.exit(1);
+}
+
+// Guard: Check if port is already in use (unless upgrade mode)
+if (!process.env.IS_RESTART || process.env.UPGRADE_RETRY_BIND !== 'true') {
+  const { createServer } = await import('net');
+  const testServer = createServer();
+
+  try {
+    await new Promise((resolve, reject) => {
+      testServer.once('error', reject);
+      testServer.once('listening', () => {
+        testServer.close();
+        resolve();
+      });
+      testServer.listen(options.port);
+    });
+  } catch (err) {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`Error: Port ${options.port} is already in use.`);
+      console.error('');
+      console.error('Solutions:');
+      console.error(`  1. Stop the existing process: tofucode stop`);
+      console.error(`  2. Use a different port: tofucode start -p <other-port>`);
+      console.error(`  3. Find what's using it: lsof -i :${options.port}`);
+      process.exit(1);
+    }
+    // Other errors are fine, let the server handle them
+  }
 }
 
 // Set environment variables
@@ -191,6 +241,19 @@ if (options.root) {
   env.ROOT_PATH = options.root;
 }
 
+// Model configuration from config file
+if (options.models) {
+  if (options.models.haiku) {
+    env.MODEL_HAIKU_SLUG = options.models.haiku;
+  }
+  if (options.models.sonnet) {
+    env.MODEL_SONNET_SLUG = options.models.sonnet;
+  }
+  if (options.models.opus) {
+    env.MODEL_OPUS_SLUG = options.models.opus;
+  }
+}
+
 // Pass PID file path to server (for restart to update it)
 if (options.pidFile) {
   env.PID_FILE = resolve(options.pidFile);
@@ -215,7 +278,8 @@ const serverPath = join(rootDir, 'server', 'index.js');
 
 if (options.daemon) {
   // Daemon mode: detached process
-  const logPath = options.logFile ? resolve(options.logFile) : join(process.cwd(), 'tofucode.log');
+  const defaultLogPath = join(homedir(), '.tofucode', 'tofucode.log');
+  const logPath = options.logFile ? resolve(options.logFile) : defaultLogPath;
   const { openSync, closeSync, mkdirSync } = await import('fs');
 
   // Ensure PID file directory exists
@@ -331,6 +395,11 @@ async function loadConfig(options) {
       options.root = resolve(config.root);
     }
 
+    // Model configuration (store for later env setup)
+    if (config.models) {
+      options.models = config.models;
+    }
+
     if (!options.quiet) {
       console.log(`Loaded config from: ${configPath}`);
     }
@@ -394,39 +463,85 @@ async function handleStop() {
 
 async function handleRestart() {
   const pidFile = getPidFile();
+  const restartLockFile = join(dirname(pidFile), 'tofucode.restart.lock');
 
-  if (existsSync(pidFile)) {
-    console.log('Stopping existing daemon...');
-    await handleStop();
-    console.log('');
-  } else {
-    console.log('No running daemon found');
-  }
-
-  console.log('Starting tofucode...');
-
-  // Re-parse args without --restart and add --daemon
-  const newArgs = args.filter(arg => arg !== '--restart');
-  if (!newArgs.includes('--daemon') && !newArgs.includes('-d')) {
-    newArgs.push('--daemon');
-  }
-
-  // Spawn new CLI instance (not detached) so we can see startup errors
-  // The new CLI will handle daemon spawning with proper detachment
-  const cliPath = fileURLToPath(import.meta.url);
-  const child = spawn('node', [cliPath, ...newArgs], {
-    stdio: 'inherit',
-  });
-
-  // Wait for new CLI to exit (it will exit after spawning daemon)
-  child.on('exit', (code) => {
-    if (code === 0) {
-      console.log('Restart completed successfully');
+  // Guard: Check if restart is already in progress
+  if (existsSync(restartLockFile)) {
+    const lockAge = Date.now() - statSync(restartLockFile).mtimeMs;
+    if (lockAge < 30000) {
+      // Lock less than 30 seconds old
+      console.error('Error: Restart already in progress (lock file exists)');
+      console.error(`Lock file: ${restartLockFile}`);
+      console.error('If stuck, remove lock file manually or wait 30 seconds');
+      process.exit(1);
     } else {
-      console.error(`Restart failed with exit code ${code}`);
+      // Stale lock, remove it
+      console.log('Removing stale restart lock...');
+      unlinkSync(restartLockFile);
     }
-    process.exit(code || 0);
-  });
+  }
+
+  // Create restart lock
+  try {
+    writeFileSync(restartLockFile, Date.now().toString(), 'utf8');
+  } catch (err) {
+    console.error(`Error: Failed to create restart lock: ${err.message}`);
+    process.exit(1);
+  }
+
+  try {
+    if (existsSync(pidFile)) {
+      console.log('Stopping existing daemon...');
+      await handleStop();
+      console.log('');
+    } else {
+      console.log('No running daemon found');
+    }
+
+    console.log('Starting tofucode...');
+
+    // Re-parse args without --restart and add --daemon
+    const newArgs = args.filter(arg => arg !== '--restart' && arg !== 'restart');
+    if (!newArgs.includes('--daemon') && !newArgs.includes('-d')) {
+      newArgs.push('--daemon');
+    }
+
+    // Spawn new CLI instance (not detached) so we can see startup errors
+    // The new CLI will handle daemon spawning with proper detachment
+    const cliPath = fileURLToPath(import.meta.url);
+    const child = spawn('node', [cliPath, 'start', ...newArgs], {
+      stdio: 'inherit',
+    });
+
+    // Wait for new CLI to exit (it will exit after spawning daemon)
+    child.on('exit', (code) => {
+      // Remove restart lock
+      try {
+        if (existsSync(restartLockFile)) {
+          unlinkSync(restartLockFile);
+        }
+      } catch (err) {
+        console.error(`Warning: Failed to remove restart lock: ${err.message}`);
+      }
+
+      if (code === 0) {
+        console.log('Restart completed successfully');
+      } else {
+        console.error(`Restart failed with exit code ${code}`);
+      }
+      process.exit(code || 0);
+    });
+  } catch (err) {
+    // Remove restart lock on error
+    try {
+      if (existsSync(restartLockFile)) {
+        unlinkSync(restartLockFile);
+      }
+    } catch (_err) {
+      // Ignore cleanup errors
+    }
+    throw err;
+  }
 }
 
 async function handleStatus() {
@@ -434,7 +549,8 @@ async function handleStatus() {
 
   if (!existsSync(pidFile)) {
     console.log('Status: Not running (no PID file found)');
-    console.log(`PID file: ${pidFile}`);
+    console.log(`Expected PID file: ${pidFile}`);
+    console.log(`Default log file: ${join(homedir(), '.tofucode', 'tofucode.log')}`);
     process.exit(1);
   }
 
@@ -444,9 +560,55 @@ async function handleStatus() {
     // Check if process exists
     try {
       process.kill(pid, 0);
-      console.log('Status: Running');
-      console.log(`PID: ${pid}`);
-      console.log(`PID file: ${pidFile}`);
+      console.log('Status: Running ✓');
+      console.log('');
+      console.log('Process Information:');
+      console.log(`  PID: ${pid}`);
+      console.log(`  PID file: ${pidFile}`);
+
+      // Try to read process environment (Linux only)
+      const envPath = `/proc/${pid}/environ`;
+      if (existsSync(envPath)) {
+        try {
+          const environ = readFileSync(envPath, 'utf8');
+          const env = {};
+          environ.split('\0').forEach(line => {
+            const [key, ...valueParts] = line.split('=');
+            if (key) env[key] = valueParts.join('=');
+          });
+
+          console.log('');
+          console.log('Configuration:');
+          console.log(`  Port: ${env.PORT || '3000'}`);
+          console.log(`  Host: ${env.HOST || '0.0.0.0'}`);
+          console.log(`  Auth: ${env.AUTH_DISABLED === 'true' ? 'Disabled' : 'Enabled'}`);
+          console.log(`  Debug: ${env.DEBUG === 'true' ? 'Enabled' : 'Disabled'}`);
+
+          if (env.ROOT_PATH) {
+            console.log(`  Root path: ${env.ROOT_PATH}`);
+          }
+
+          const logFile = env.LOG_FILE || join(homedir(), '.tofucode', 'tofucode.log');
+          console.log(`  Log file: ${logFile}`);
+
+          if (env.DEBUG_TOKEN) {
+            console.log(`  Bypass token: ${env.DEBUG_TOKEN.slice(0, 8)}...`);
+          }
+        } catch (err) {
+          // Permission denied or other error reading environ
+          console.log('');
+          console.log('Configuration: (unable to read process environment)');
+          console.log(`  Default port: 3000`);
+          console.log(`  Default log file: ${join(homedir(), '.tofucode', 'tofucode.log')}`);
+        }
+      } else {
+        // Not Linux or /proc not available
+        console.log('');
+        console.log('Configuration: (platform-specific details unavailable)');
+        console.log(`  Default port: 3000`);
+        console.log(`  Default log file: ${join(homedir(), '.tofucode', 'tofucode.log')}`);
+      }
+
       process.exit(0);
     } catch (err) {
       console.log('Status: Not running (stale PID file)');

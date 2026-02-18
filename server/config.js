@@ -17,6 +17,13 @@ export const config = {
 
   // Root path restriction (if set, limits file/terminal access)
   rootPath: process.env.ROOT_PATH || null,
+
+  // Model configuration (override default model versions)
+  models: {
+    haiku: process.env.MODEL_HAIKU_SLUG || 'claude-haiku-4-5',
+    sonnet: process.env.MODEL_SONNET_SLUG || 'claude-sonnet-4-6',
+    opus: process.env.MODEL_OPUS_SLUG || 'claude-opus-4-6',
+  },
 };
 
 // Convert project path to slug (how Claude stores it)
@@ -37,6 +44,10 @@ export function getProjectDisplayName(slug) {
   return slug;
 }
 
+// SECURITY: Limits for slugToPath to prevent exponential complexity DoS
+const MAX_SLUG_PARTS = 30; // Reject slugs with too many dash-separated parts
+const MAX_SPAN_SIZE = 8; // Max parts combined into a single folder name (2^8=256 combos max per span)
+
 // Convert slug back to path (best effort - check if path exists)
 export function slugToPath(slug) {
   // Slug format: -home-ts-projects-claude-web
@@ -46,19 +57,39 @@ export function slugToPath(slug) {
   const normalized = slug.replace(/^-/, ''); // Remove leading dash
   const parts = normalized.split('-');
 
+  // SECURITY: Reject excessively long slugs to prevent DoS via exponential recursion
+  if (parts.length > MAX_SLUG_PARTS) {
+    // Fallback to simple replacement for oversized slugs
+    return `/${normalized.replace(/-/g, '/')}`;
+  }
+
   function findPath(currentPath, startIdx) {
     if (startIdx >= parts.length) {
       return existsSync(currentPath) ? currentPath : null;
     }
 
-    // Try matching 1, 2, 3... consecutive parts as a single folder name
-    for (let endIdx = startIdx; endIdx < parts.length; endIdx++) {
-      const folderName = parts.slice(startIdx, endIdx + 1).join('-');
-      const testPath = `${currentPath}/${folderName}`;
+    // Try matching 1, 2, 3... consecutive parts as a single folder name.
+    // For each span, try joining with '-' first, then also try all combinations
+    // where any separator between adjacent parts could be '.' (e.g. picotofu.dev).
+    // Cap span size to MAX_SPAN_SIZE to bound combinations per level.
+    const maxEnd = Math.min(parts.length - 1, startIdx + MAX_SPAN_SIZE - 1);
+    for (let endIdx = startIdx; endIdx <= maxEnd; endIdx++) {
+      const span = parts.slice(startIdx, endIdx + 1);
 
-      if (existsSync(testPath)) {
-        const result = findPath(testPath, endIdx + 1);
-        if (result) return result;
+      // Generate all separator combinations (each gap is '-' or '.')
+      const gapCount = span.length - 1;
+      const combos = 2 ** gapCount; // 1 part = 1 combo, 2 parts = 2, etc.
+      for (let mask = 0; mask < combos; mask++) {
+        let folderName = span[0];
+        for (let g = 0; g < gapCount; g++) {
+          folderName += (mask >> g) & 1 ? '.' : '-';
+          folderName += span[g + 1];
+        }
+        const testPath = `${currentPath}/${folderName}`;
+        if (existsSync(testPath)) {
+          const result = findPath(testPath, endIdx + 1);
+          if (result) return result;
+        }
       }
     }
 

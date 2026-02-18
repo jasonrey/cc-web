@@ -107,6 +107,7 @@ const terminalSubTab = ref('history'); // 'active' | 'history'
 const terminalInput = ref('');
 const terminalCwd = ref(''); // Editable CWD for terminal commands
 const terminalInputRef = ref(null);
+const terminalOutputRef = ref(null);
 const pathEditInputRef = ref(null);
 const manualExpandState = ref(new Map()); // Map<processId, boolean> for user-toggled items
 
@@ -406,7 +407,13 @@ function handleKeydown(e) {
     }
     if (e.key === '2') {
       e.preventDefault();
-      currentMode.value = 'terminal';
+      // If already in terminal mode, toggle between active/history tabs
+      if (currentMode.value === 'terminal') {
+        terminalSubTab.value =
+          terminalSubTab.value === 'active' ? 'history' : 'active';
+      } else {
+        currentMode.value = 'terminal';
+      }
       nextTick(() => {
         // Initialize CWD if needed
         if (!terminalCwd.value && projectStatus.value.cwd) {
@@ -434,24 +441,38 @@ function handleKeydown(e) {
       return;
     }
 
-    // Ctrl+L or Cmd+L: Scroll to bottom (clear view) in chat mode
-    if (e.key === 'l' && !terminalMode.value) {
+    // Ctrl+L or Cmd+L: Scroll to bottom (clear view)
+    if (e.key === 'l') {
       e.preventDefault();
-      scrollToBottom();
+      if (terminalMode.value) {
+        // In terminal mode: scroll terminal output to bottom
+        terminalOutputRef.value?.scrollHistoryToBottom();
+      } else {
+        // In chat mode: scroll chat to bottom
+        scrollToBottom();
+      }
       return;
     }
 
-    // Cmd+Up: Navigate to previous turn in chat mode
-    if (e.key === 'ArrowUp' && currentMode.value === 'chat') {
+    // Cmd+Up: Navigate to previous turn/command
+    if (e.key === 'ArrowUp') {
       e.preventDefault();
-      chatMessagesRef.value?.goToPreviousTurn();
+      if (currentMode.value === 'chat') {
+        chatMessagesRef.value?.goToPreviousTurn();
+      } else if (currentMode.value === 'terminal') {
+        terminalOutputRef.value?.goToPreviousCommand();
+      }
       return;
     }
 
-    // Cmd+Down: Navigate to next turn in chat mode
-    if (e.key === 'ArrowDown' && currentMode.value === 'chat') {
+    // Cmd+Down: Navigate to next turn/command
+    if (e.key === 'ArrowDown') {
       e.preventDefault();
-      chatMessagesRef.value?.goToNextTurn();
+      if (currentMode.value === 'chat') {
+        chatMessagesRef.value?.goToNextTurn();
+      } else if (currentMode.value === 'terminal') {
+        terminalOutputRef.value?.goToNextCommand();
+      }
       return;
     }
 
@@ -623,6 +644,69 @@ function focusChatInput(event) {
   editable?.focus();
 }
 
+// Handle Tab key for chat input markdown editor
+function handleChatInputTab(event) {
+  if (!editorInstance.value) return;
+
+  const selection = editorInstance.value.getSelection();
+  if (!selection) return;
+
+  const content = editorInstance.value.getContent();
+  const lines = content.split('\n');
+  const currentLine = lines[selection.row];
+
+  // Check if current line is a list item
+  const listMatch = currentLine.match(/^(\s*)([+*-]|\d+[.)])\s/);
+
+  if (event.shiftKey) {
+    // Shift+Tab: Dedent
+    if (listMatch) {
+      // Dedent list item (remove up to 2 spaces from beginning)
+      const leadingSpaces = listMatch[1];
+      if (leadingSpaces.length >= 2) {
+        const newLine = currentLine.replace(/^ {2}/, '');
+        lines[selection.row] = newLine;
+        editorInstance.value.setContent(lines.join('\n'));
+
+        // Restore cursor position (adjusted for removed spaces)
+        const newCol = Math.max(0, selection.col - 2);
+        editorInstance.value.setSelection({ row: selection.row, col: newCol });
+      }
+    } else {
+      // Not a list - remove up to 2 spaces from beginning
+      if (currentLine.startsWith('  ')) {
+        const newLine = currentLine.replace(/^ {2}/, '');
+        lines[selection.row] = newLine;
+        editorInstance.value.setContent(lines.join('\n'));
+
+        // Restore cursor position
+        const newCol = Math.max(0, selection.col - 2);
+        editorInstance.value.setSelection({ row: selection.row, col: newCol });
+      }
+    }
+  } else {
+    // Tab: Indent
+    if (listMatch) {
+      // Indent list item (add 2 spaces at beginning)
+      const newLine = `  ${currentLine}`;
+      lines[selection.row] = newLine;
+      editorInstance.value.setContent(lines.join('\n'));
+
+      // Restore cursor position (adjusted for added spaces)
+      editorInstance.value.setSelection({
+        row: selection.row,
+        col: selection.col + 2,
+      });
+    } else {
+      // Not a list - insert 2 spaces at cursor
+      editorInstance.value.paste('  ');
+    }
+  }
+
+  // Update inputValue
+  inputValue.value = editorInstance.value.getContent();
+}
+
 // Initialize TinyMDE editor
 function initTinyMDE() {
   nextTick(() => {
@@ -640,11 +724,14 @@ function initTinyMDE() {
         inputValue.value = event.content;
       });
 
-      // Handle Ctrl+Enter / Cmd+Enter in editor via DOM event
+      // Handle Ctrl+Enter / Cmd+Enter and Tab in editor via DOM event
       editorEl.value.addEventListener('keydown', (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
           e.preventDefault();
           handleSubmit();
+        } else if (e.key === 'Tab') {
+          e.preventDefault();
+          handleChatInputTab(e);
         }
       });
     }
@@ -830,8 +917,11 @@ watch(
 
       if (session === 'new') {
         clearMessages();
-        newSession({
-          dangerouslySkipPermissions: permissionMode.value === 'skip',
+        // Wait for project selection to complete before creating new session
+        nextTick(() => {
+          newSession({
+            dangerouslySkipPermissions: permissionMode.value === 'skip',
+          });
         });
       } else if (session) {
         // Check if we're transitioning from 'new' to the actual session ID
@@ -846,7 +936,9 @@ watch(
           // Switching to a different session
           // Clear messages immediately to prevent race condition
           clearMessages();
-          selectSession(session);
+          // Wait for project selection to complete before selecting session
+          // This prevents race condition where select_session arrives before project is selected
+          nextTick(() => selectSession(session));
         }
       }
 
@@ -1470,7 +1562,7 @@ watch(
         setTimeout(() => {
           // TinyMDE uses contenteditable div, not textarea
           const editorDiv = document.querySelector(
-            '.memo-editor .TinyMDE[contenteditable]',
+            '.memo-container .TinyMDE[contenteditable]',
           );
           if (editorDiv) {
             editorDiv.focus();
@@ -1982,6 +2074,7 @@ watch(
       :messages="messages"
       :is-running="isRunning"
       :is-new-session="isNewSession"
+      :context-ready="contextReady"
       :has-older-messages="hasOlderMessages"
       :summary-count="summaryCount"
       :loading-older-messages="loadingOlderMessages"
@@ -1995,6 +2088,7 @@ watch(
     <!-- Terminal Mode -->
     <main v-else-if="currentMode === 'terminal'" class="terminal">
       <TerminalOutput
+        ref="terminalOutputRef"
         :processes="terminalProcesses"
         :expanded-history="expandedHistory"
         :active-tab="terminalSubTab"
@@ -2693,16 +2787,14 @@ watch(
     <!-- Memo Modal/Sidebar -->
     <div v-if="memoOpen" class="memo-overlay">
       <div class="memo-container">
-        <div class="memo-editor">
-          <FileEditor
-            v-if="quickAccessFile"
-            :file-path="quickAccessFile.path"
-            :content="quickAccessFile.content"
-            :loading="quickAccessFile.loading"
-            :auto-save="autoSaveFilesEnabled"
-            @save="handleMemoSave"
-          />
-        </div>
+        <FileEditor
+          v-if="quickAccessFile"
+          :file-path="quickAccessFile.path"
+          :content="quickAccessFile.content"
+          :loading="quickAccessFile.loading"
+          :auto-save="autoSaveFilesEnabled"
+          @save="handleMemoSave"
+        />
         <div class="memo-footer">
           <div class="memo-info">
             <span class="memo-filename">{{ quickAccessFileName }}</span>
@@ -2734,6 +2826,12 @@ watch(
   font-size: 13px;
   line-height: 1.5;
   padding: 0;
+}
+
+/* Only constrain height in the chat input, not in file editor */
+.tinyMDE .TinyMDE {
+  max-height: 300px;
+  overflow-y: auto;
 }
 
 .TinyMDE.TinyMDE_empty::before {
@@ -4424,10 +4522,9 @@ watch(
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
-.memo-editor {
+.memo-container :deep(.file-editor) {
   flex: 1;
-  overflow: auto;
-  padding: 16px;
+  min-height: 0;
 }
 
 .memo-footer {
