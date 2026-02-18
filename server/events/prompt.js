@@ -24,6 +24,7 @@
 import path from 'node:path';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { config, slugToPath } from '../config.js';
+import { eventBus } from '../lib/event-bus.js';
 import { logger } from '../lib/logger.js';
 import { loadMcpServers } from '../lib/mcp.js';
 import { addTaskResult, getOrCreateTask, tasks } from '../lib/tasks.js';
@@ -329,6 +330,12 @@ async function executePrompt(ws, projectSlug, sessionId, prompt, options = {}) {
             projectPath,
             isNew: isNewSession,
           });
+          eventBus.emit('session:start', {
+            projectPath,
+            sessionId: newSessionId,
+            isNew: isNewSession,
+            prompt,
+          });
           // Note: No need to broadcast sessions_list here - clients will
           // refresh via getRecentSessions() when task_status changes
         }
@@ -363,6 +370,12 @@ async function executePrompt(ws, projectSlug, sessionId, prompt, options = {}) {
             };
             addTaskResult(task, result);
             sendAndBroadcast(ws, taskSessionId, result);
+            eventBus.emit('session:text', {
+              projectPath,
+              sessionId: taskSessionId,
+              content: block.text,
+              model: modelName,
+            });
           } else if ('name' in block) {
             const result = {
               type: 'tool_use',
@@ -375,6 +388,12 @@ async function executePrompt(ws, projectSlug, sessionId, prompt, options = {}) {
             };
             addTaskResult(task, result);
             sendAndBroadcast(ws, taskSessionId, result);
+            eventBus.emit('session:tool', {
+              projectPath,
+              sessionId: taskSessionId,
+              tool: block.name,
+              input: block.input,
+            });
 
             // Signal frontend for AskUserQuestion - let stream continue
             // The user will answer later, and we'll handle it as a follow-up prompt
@@ -446,6 +465,13 @@ async function executePrompt(ws, projectSlug, sessionId, prompt, options = {}) {
         };
         addTaskResult(task, result);
         sendAndBroadcast(ws, taskSessionId, result);
+        eventBus.emit('session:result', {
+          projectPath,
+          sessionId: taskSessionId,
+          subtype: message.subtype,
+          cost: message.total_cost_usd,
+          duration: message.duration_ms,
+        });
 
         // Mark completed immediately on result — don't wait for the for-await loop to exit.
         // The SDK may keep the stream open briefly after emitting result (e.g. cleanup),
@@ -532,6 +558,11 @@ async function executePrompt(ws, projectSlug, sessionId, prompt, options = {}) {
     };
     addTaskResult(task, errorResult);
     sendAndBroadcast(ws, taskSessionId, errorResult);
+    eventBus.emit('session:error', {
+      projectPath,
+      sessionId: taskSessionId,
+      message: userMessage,
+    });
     broadcastTaskStatus(taskSessionId, {
       type: 'task_status',
       taskId: task.id,

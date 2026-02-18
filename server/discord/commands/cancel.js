@@ -45,11 +45,22 @@ export async function handleCancel(interaction) {
 
   const success = cancelTask(sessionMapping.sessionId);
   if (success) {
-    await interaction.reply('Task cancelled.');
+    await interaction.reply({ content: '⛔ Task cancelled.', flags: 64 });
+
+    // Edit the last bot message in the thread to append a cancelled notice
+    try {
+      const msgs = await interaction.channel.messages.fetch({ limit: 20 });
+      const lastBotMsg = msgs.find((m) => m.author.bot && m.editable);
+      if (lastBotMsg) {
+        await lastBotMsg.edit(`${lastBotMsg.content}\n\n-# ⛔ Cancelled`);
+      }
+    } catch {
+      // Non-critical — cancelled reply already sent
+    }
   } else {
     await interaction.reply({
       content: 'Failed to cancel task.',
-      flags: 64, // ephemeral
+      flags: 64,
     });
   }
 }

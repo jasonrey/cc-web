@@ -126,6 +126,7 @@ async function handleThreadMessage(message) {
   const errorLines = []; // tool errors shown inline in response
   let lastEditTime = 0;
   let newSessionId = null;
+  const isFirstMessage = sessionId === null; // true when this opens a new session
 
   try {
     // Send "thinking" indicator
@@ -214,12 +215,19 @@ async function handleThreadMessage(message) {
         }
 
         case 'result': {
+          const isSuccess = event.subtype === 'success';
           const footer = formatFooter(toolState, event);
+
+          // Item 3: mention user on completion (only on success, not trivial fast replies)
+          const elapsed = event.duration ?? 0;
+          const mention =
+            isSuccess && elapsed > 10000 ? `<@${message.author.id}> ` : '';
+
           const display = buildDisplayMessage(fullText, errorLines, footer);
           const chunks = chunkMessage(display);
 
           if (thinkingMsg && chunks[0]) {
-            await thinkingMsg.edit(chunks[0]).catch((err) => {
+            await thinkingMsg.edit(`${mention}${chunks[0]}`).catch((err) => {
               logger.error('[Discord] Edit error:', err);
             });
             for (let i = 1; i < chunks.length; i++) {
@@ -232,12 +240,21 @@ async function handleThreadMessage(message) {
           if (newSessionId && sessionMapping === null) {
             setSessionTitle(projectSlug, newSessionId, thread.name);
           }
+
+          // Item 2: auto-rename thread from first message content
+          if (isFirstMessage && newSessionId) {
+            const raw = message.content.trim().replace(/\s+/g, ' ');
+            const name = raw.length > 50 ? `${raw.substring(0, 47)}…` : raw;
+            thread.setName(name).catch(() => {}); // best-effort
+          }
           break;
         }
 
         case 'error': {
           if (thinkingMsg) {
-            await thinkingMsg.edit(formatError(event.message)).catch((err) => {
+            // Item 5: retry hint on error
+            const errMsg = `${formatError(event.message)}\n\n-# 💬 Reply to retry or rephrase`;
+            await thinkingMsg.edit(errMsg).catch((err) => {
               logger.error('[Discord] Edit error:', err);
             });
           }

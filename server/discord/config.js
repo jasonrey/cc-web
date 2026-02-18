@@ -77,6 +77,36 @@ export function getChannelMapping(channelId) {
 }
 
 /**
+ * Find a channel mapping by project path (reverse lookup for event bus bridge)
+ * @param {string} projectPath - Absolute project path
+ * @returns {{ channelId: string } & Object | null}
+ */
+export function getChannelMappingByPath(projectPath) {
+  const mappings = loadChannelMappings();
+  for (const [channelId, mapping] of Object.entries(mappings)) {
+    if (mapping.projectPath === projectPath) {
+      return { channelId, ...mapping };
+    }
+  }
+  return null;
+}
+
+/**
+ * Find a session mapping by sessionId (reverse lookup)
+ * @param {string} sessionId
+ * @returns {{ threadId: string } & Object | null}
+ */
+export function getSessionMappingBySessionId(sessionId) {
+  const mappings = loadSessionMappings();
+  for (const [threadId, mapping] of Object.entries(mappings)) {
+    if (mapping.sessionId === sessionId) {
+      return { threadId, ...mapping };
+    }
+  }
+  return null;
+}
+
+/**
  * Remove a channel mapping
  * @param {string} channelId - Discord channel ID
  */

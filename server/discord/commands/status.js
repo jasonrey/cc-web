@@ -12,6 +12,7 @@
 
 import { SlashCommandBuilder } from 'discord.js';
 import { config } from '../../config.js';
+import { tasks } from '../../lib/tasks.js';
 import {
   discordConfig,
   findSessionsByChannel,
@@ -50,11 +51,35 @@ export async function handleStatus(interaction) {
     );
   }
 
+  // --- Active sessions in this channel ---
+  if (channelMapping) {
+    const channelSessions = findSessionsByChannel(channelId);
+    const activeSessions = channelSessions.filter(
+      (s) => tasks.get(s.sessionId)?.status === 'running',
+    );
+    if (activeSessions.length > 0) {
+      lines.push('');
+      lines.push('## 🟡 Active Tasks');
+      for (const s of activeSessions) {
+        lines.push(`<#${s.threadId}> — \`${s.sessionId.substring(0, 8)}…\``);
+      }
+    }
+  }
+
   // --- Bot-wide stats ---
   lines.push('');
   lines.push('## 📊 Bot Stats');
   lines.push(`**Mapped channels**: ${Object.keys(allChannelMappings).length}`);
   lines.push(`**Mapped threads**: ${Object.keys(allSessionMappings).length}`);
+
+  // Count running tasks across all sessions
+  let runningCount = 0;
+  for (const [, task] of tasks) {
+    if (task.status === 'running') runningCount++;
+  }
+  if (runningCount > 0) {
+    lines.push(`**Running tasks**: ${runningCount}`);
+  }
 
   // --- Server config ---
   lines.push('');

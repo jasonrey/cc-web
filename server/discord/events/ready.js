@@ -14,6 +14,7 @@ import { data as sessionData } from '../commands/session.js';
 import { data as setupData } from '../commands/setup.js';
 import { data as statusData } from '../commands/status.js';
 import { discordConfig } from '../config.js';
+import { startWebUiBridge } from '../lib/web-ui-bridge.js';
 
 const commands = [
   setupData,
@@ -60,4 +61,7 @@ export async function handleReady(client) {
   } catch (err) {
     logger.error('[Discord] Failed to register slash commands:', err);
   }
+
+  // Start Web UI → Discord bridge (mirrors Web UI sessions to mapped channels)
+  startWebUiBridge(client);
 }
