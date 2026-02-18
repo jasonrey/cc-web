@@ -58,14 +58,26 @@ export function slugToPath(slug) {
       return existsSync(currentPath) ? currentPath : null;
     }
 
-    // Try matching 1, 2, 3... consecutive parts as a single folder name
+    // Try matching 1, 2, 3... consecutive parts as a single folder name.
+    // For each span, try joining with '-' first, then also try all combinations
+    // where any separator between adjacent parts could be '.' (e.g. picotofu.dev).
     for (let endIdx = startIdx; endIdx < parts.length; endIdx++) {
-      const folderName = parts.slice(startIdx, endIdx + 1).join('-');
-      const testPath = `${currentPath}/${folderName}`;
+      const span = parts.slice(startIdx, endIdx + 1);
 
-      if (existsSync(testPath)) {
-        const result = findPath(testPath, endIdx + 1);
-        if (result) return result;
+      // Generate all separator combinations (each gap is '-' or '.')
+      const gapCount = span.length - 1;
+      const combos = 2 ** gapCount; // 1 part = 1 combo, 2 parts = 2, etc.
+      for (let mask = 0; mask < combos; mask++) {
+        let folderName = span[0];
+        for (let g = 0; g < gapCount; g++) {
+          folderName += (mask >> g) & 1 ? '.' : '-';
+          folderName += span[g + 1];
+        }
+        const testPath = `${currentPath}/${folderName}`;
+        if (existsSync(testPath)) {
+          const result = findPath(testPath, endIdx + 1);
+          if (result) return result;
+        }
       }
     }
 
