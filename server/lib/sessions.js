@@ -256,7 +256,7 @@ function parseEntry(entry) {
   // Assistant messages
   if (entry.type === 'assistant') {
     const blocks = entry.message?.content || [];
-    // Extract model name from full model string (e.g., "claude-sonnet-4-5-20250929" -> "sonnet")
+    // Extract model name from full model string (e.g., "claude-sonnet-4-6" -> "sonnet")
     let modelName = null;
     if (entry.message?.model) {
       const fullModel = entry.message.model;

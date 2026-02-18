@@ -139,10 +139,18 @@ async function executePrompt(ws, projectSlug, sessionId, prompt, options = {}) {
   };
 
   // Set model if specified (sonnet, opus, haiku)
-  // Override opus to use 4.6 explicitly (SDK defaults to 4.1)
+  // Map friendly names to specific model versions from config
   if (options.model) {
-    queryOptions.model =
-      options.model === 'opus' ? 'claude-opus-4-6' : options.model;
+    if (options.model === 'opus') {
+      queryOptions.model = config.models.opus;
+    } else if (options.model === 'sonnet') {
+      queryOptions.model = config.models.sonnet;
+    } else if (options.model === 'haiku') {
+      queryOptions.model = config.models.haiku;
+    } else {
+      // Pass through full model strings (e.g., "claude-sonnet-4-5-20250929")
+      queryOptions.model = options.model;
+    }
   }
 
   if (taskSessionId) {
@@ -321,7 +329,7 @@ async function executePrompt(ws, projectSlug, sessionId, prompt, options = {}) {
       // Process messages
       if (message.type === 'assistant') {
         const content = message.message?.content || [];
-        // Extract model name from full model string (e.g., "claude-sonnet-4-5-20250929" -> "sonnet")
+        // Extract model name from full model string (e.g., "claude-sonnet-4-6" -> "sonnet")
         let modelName = null;
         if (message.message?.model) {
           const fullModel = message.message.model;

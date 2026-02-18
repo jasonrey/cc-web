@@ -13,10 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Folder path search in file picker** - File picker now shows files inside folders that match the search query
 - **Cmd+L to scroll terminal to bottom** - Jump to bottom of terminal output in both active and history tabs
 - **Terminal command navigation** - Navigate through terminal history with Cmd+Up/Down arrows or on-screen buttons with command counter (e.g., "3/15")
+- **Configurable model slugs** - Override default Claude model versions via environment variables (`MODEL_HAIKU_SLUG`, `MODEL_SONNET_SLUG`, `MODEL_OPUS_SLUG`)
 
 ### Changed
 - **CLI subcommands** - Use `tofucode start|stop|restart|status` instead of `--stop`, `--restart`, `--status` flags (legacy flags still supported for backwards compatibility)
 - Log file location now consistently uses `~/.tofucode/tofucode.log` (was split between cwd and ~/.tofucode)
+- **Default Sonnet model updated to 4.6** - Now uses `claude-sonnet-4-6` by default (was SDK default, likely 4.5)
+- **Updated Claude Agent SDK to 0.2.45** - Latest SDK version with improved model support
 
 ### Fixed
 - One-click upgrade now properly restarts server with correct configuration, port, and daemon mode preserved

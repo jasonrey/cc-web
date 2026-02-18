@@ -17,6 +17,13 @@ export const config = {
 
   // Root path restriction (if set, limits file/terminal access)
   rootPath: process.env.ROOT_PATH || null,
+
+  // Model configuration (override default model versions)
+  models: {
+    haiku: process.env.MODEL_HAIKU_SLUG || 'claude-haiku-4-5',
+    sonnet: process.env.MODEL_SONNET_SLUG || 'claude-sonnet-4-6',
+    opus: process.env.MODEL_OPUS_SLUG || 'claude-opus-4-6',
+  },
 };
 
 // Convert project path to slug (how Claude stores it)

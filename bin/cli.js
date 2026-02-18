@@ -133,6 +133,9 @@ Environment Variables:
   LOG_FILE                   Custom log file path
   PID_FILE                   Custom PID file path
   DEBUG_TOKEN                Bypass token for auth-free access (automation/testing)
+  MODEL_HAIKU_SLUG           Claude Haiku model ID (default: claude-haiku-4-5)
+  MODEL_SONNET_SLUG          Claude Sonnet model ID (default: claude-sonnet-4-6)
+  MODEL_OPUS_SLUG            Claude Opus model ID (default: claude-opus-4-6)
 
 Configuration File:
   Use --config to load settings from a JSON file. CLI args override config.
@@ -236,6 +239,19 @@ if (options.bypassToken) {
 
 if (options.root) {
   env.ROOT_PATH = options.root;
+}
+
+// Model configuration from config file
+if (options.models) {
+  if (options.models.haiku) {
+    env.MODEL_HAIKU_SLUG = options.models.haiku;
+  }
+  if (options.models.sonnet) {
+    env.MODEL_SONNET_SLUG = options.models.sonnet;
+  }
+  if (options.models.opus) {
+    env.MODEL_OPUS_SLUG = options.models.opus;
+  }
 }
 
 // Pass PID file path to server (for restart to update it)
@@ -377,6 +393,11 @@ async function loadConfig(options) {
     }
     if (config.root !== undefined && !argSet.has('--root')) {
       options.root = resolve(config.root);
+    }
+
+    // Model configuration (store for later env setup)
+    if (config.models) {
+      options.models = config.models;
     }
 
     if (!options.quiet) {

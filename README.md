@@ -140,8 +140,42 @@ tofucode --help
 | Root path | `--root <path>` | `"root": "<path>"` | `ROOT_PATH=<path>` |
 | Disable update check | - | - | `DISABLE_UPDATE_CHECK=true` |
 | Update check interval | - | - | `UPDATE_CHECK_INTERVAL=3600000` |
+| Model: Haiku | - | - | `MODEL_HAIKU_SLUG=claude-haiku-4-5` |
+| Model: Sonnet | - | - | `MODEL_SONNET_SLUG=claude-sonnet-4-6` |
+| Model: Opus | - | - | `MODEL_OPUS_SLUG=claude-opus-4-6` |
 
 Run `tofucode --help` for all options.
+
+### Model Configuration
+
+By default, tofucode uses the latest Claude model versions:
+- **Haiku:** `claude-haiku-4-5`
+- **Sonnet:** `claude-sonnet-4-6`
+- **Opus:** `claude-opus-4-6`
+
+You can override these defaults using environment variables:
+
+```bash
+# Use specific model versions
+MODEL_SONNET_SLUG=claude-sonnet-4-5-20250929 \
+MODEL_OPUS_SLUG=claude-opus-4-5-20251101 \
+tofucode
+```
+
+Or in your `.env` file:
+
+```bash
+MODEL_HAIKU_SLUG=claude-haiku-4-5
+MODEL_SONNET_SLUG=claude-sonnet-4-6
+MODEL_OPUS_SLUG=claude-opus-4-6
+```
+
+This allows you to:
+- Pin to specific model versions with snapshot dates
+- Use legacy models if needed
+- Test new models as they're released
+
+See the [Anthropic Models documentation](https://docs.anthropic.com/en/docs/models-overview) for all available model identifiers.
 
 ### Security: Root Path Restriction
 

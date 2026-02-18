@@ -4,7 +4,7 @@
 
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, openSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { logger } from './logger.js';
@@ -75,6 +75,10 @@ export async function restartWithInvertedSpawn(reason, newVersion = null) {
   console.log(`[RESTART] Current argv: ${JSON.stringify(process.argv)}`);
 
   // Generate unique restart token
+  // TODO: Make this useful - the token is passed to the new process via RESTART_TOKEN env var
+  // but is never consumed. Idea: new process should broadcast { type: 'restart_ready', token }
+  // via WebSocket so the frontend can verify it reconnected to the correct new instance,
+  // not a stale connection to the old process or an unrelated server.
   const restartToken = randomBytes(16).toString('hex');
   console.log(`[RESTART] Generated restart token: ${restartToken}`);
 
@@ -102,9 +106,16 @@ export async function restartWithInvertedSpawn(reason, newVersion = null) {
     );
   }
 
+  // Open log file for the new process to inherit stdout/stderr
+  // This ensures logs continue after restart, and DEBUG mode output is preserved
+  const logDir = join(homedir(), '.tofucode');
+  const logFile = process.env.LOG_FILE || join(logDir, 'tofucode.log');
+  mkdirSync(logDir, { recursive: true });
+  const logFd = openSync(logFile, 'a');
+
   const spawnOptions = {
     detached: true,
-    stdio: 'ignore',
+    stdio: ['ignore', logFd, logFd],
     env: {
       ...process.env,
       RESTART_TOKEN: restartToken,
