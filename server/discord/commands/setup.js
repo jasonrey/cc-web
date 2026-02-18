@@ -3,11 +3,20 @@
  *
  * Maps a Discord channel to a tofucode project folder.
  * Usage: /setup project:/absolute/path/to/project
+ *        /setup project:/absolute/path/to/project force:true
+ *
+ * If channel is already configured, warns user and requires confirmation
+ * via button click regardless of whether --force is used.
  */
 
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { SlashCommandBuilder } from 'discord.js';
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  SlashCommandBuilder,
+} from 'discord.js';
 import { config, pathToSlug } from '../../config.js';
 import { getChannelMapping, saveChannelMapping } from '../config.js';
 
@@ -19,10 +28,19 @@ export const data = new SlashCommandBuilder()
       .setName('project')
       .setDescription('Absolute project path (e.g., /home/user/projects/myapp)')
       .setRequired(true),
+  )
+  .addBooleanOption((option) =>
+    option
+      .setName('force')
+      .setDescription(
+        'Force override existing mapping (still requires confirmation)',
+      )
+      .setRequired(false),
   );
 
 export async function handleSetup(interaction) {
   const projectPath = interaction.options.getString('project');
+  const force = interaction.options.getBoolean('force') ?? false;
   const channelId = interaction.channelId;
   const guildId = interaction.guildId;
 
@@ -60,10 +78,87 @@ export async function handleSetup(interaction) {
   }
 
   const projectSlug = pathToSlug(projectPath);
-
-  // Save mapping (overwrite if exists)
   const existingMapping = getChannelMapping(channelId);
 
+  // If already configured, always require confirmation via button
+  if (existingMapping) {
+    const forceNote = force
+      ? '\n_`force` flag detected — still requires confirmation._'
+      : '';
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('setup_confirm')
+        .setLabel('Yes, remap channel')
+        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId('setup_cancel')
+        .setLabel('Cancel')
+        .setStyle(ButtonStyle.Secondary),
+    );
+
+    await interaction.reply({
+      content:
+        '⚠️ **This channel is already mapped to a project.**\n\n' +
+        `**Current**: \`${existingMapping.projectPath}\`\n` +
+        `**New**: \`${projectPath}\`\n\n` +
+        `Existing threads will run Claude in the new project directory after remapping.${forceNote}\n\n` +
+        'Are you sure you want to remap this channel?',
+      components: [row],
+      flags: 64, // ephemeral
+    });
+
+    // Wait for button click (30 second timeout)
+    const filter = (i) =>
+      ['setup_confirm', 'setup_cancel'].includes(i.customId) &&
+      i.user.id === interaction.user.id;
+
+    try {
+      const button = await interaction.channel.awaitMessageComponent({
+        filter,
+        time: 30000,
+      });
+
+      if (button.customId === 'setup_cancel') {
+        await button.update({
+          content: '❌ Remap cancelled. Channel mapping unchanged.',
+          components: [],
+        });
+        return;
+      }
+
+      // Confirmed - save and update
+      saveChannelMapping(channelId, {
+        projectPath,
+        projectSlug,
+        guildId,
+        configuredBy: interaction.user.id,
+        configuredAt: new Date().toISOString(),
+      });
+
+      await button.update({
+        content:
+          '✅ Channel remapped!\n' +
+          `**Project**: \`${projectPath}\`\n` +
+          `**Slug**: \`${projectSlug}\`\n\n` +
+          `⚠️ _Previously mapped to \`${existingMapping.projectPath}\`. Existing threads will now run Claude in the new project directory._`,
+        components: [],
+      });
+    } catch (err) {
+      if (err.message?.includes('time')) {
+        await interaction.editReply({
+          content: '⏱️ Confirmation timed out. Channel mapping unchanged.',
+          components: [],
+        });
+      } else {
+        throw err;
+      }
+    }
+
+    return;
+  }
+
+  // No existing mapping - save directly
   saveChannelMapping(channelId, {
     projectPath,
     projectSlug,
@@ -72,14 +167,10 @@ export async function handleSetup(interaction) {
     configuredAt: new Date().toISOString(),
   });
 
-  const overwriteNote = existingMapping
-    ? `\n\n⚠️ _Previously mapped to \`${existingMapping.projectPath}\`. Existing threads will now run Claude in the new project directory._`
-    : '';
-
   await interaction.reply(
     '✅ Channel configured!\n' +
       `**Project**: \`${projectPath}\`\n` +
-      `**Slug**: \`${projectSlug}\`${overwriteNote}\n\n` +
+      `**Slug**: \`${projectSlug}\`\n\n` +
       'Create threads in this channel to start sessions with Claude Code.\n' +
       'Use `/session` to list existing sessions.',
   );
