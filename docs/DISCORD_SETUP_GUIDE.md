@@ -1,334 +1,229 @@
-# Discord Bot Setup Guide for Testing
+# Discord Bot Setup Guide
 
-This guide walks you through creating a Discord bot for testing the tofucode Discord integration.
+tofucode supports a Discord bot integration using the bring-your-own-bot (BYOB) model. You create and host your own Discord bot — tofucode connects to it using your bot token.
 
 ---
 
-## Part 1: Create Discord Bot Application
+## Part 1: Create a Discord Bot
 
 ### Step 1: Go to Discord Developer Portal
 
 Visit: https://discord.com/developers/applications
 
-Click **"New Application"** button (top right)
+Click **"New Application"** (top right), name it (e.g. "tofucode"), agree to terms, click **"Create"**.
 
-### Step 2: Name Your Bot
-
-- Enter a name (e.g., "tofucode Test Bot")
-- Agree to terms
-- Click **"Create"**
-
-### Step 3: Configure Bot Settings
+### Step 2: Configure Bot Settings
 
 1. In the left sidebar, click **"Bot"**
-2. Click **"Add Bot"** → **"Yes, do it!"**
-3. Under **"Token"**, click **"Reset Token"** → **"Yes, do it!"**
-4. **Copy the token** and save it somewhere secure
+2. Under **"Token"**, click **"Reset Token"** → **"Yes, do it!"**
+3. **Copy the token** — save it securely, you'll need it for configuration
 
-   ```
-   Example token format:
-   YOUR_BOT_TOKEN_HERE
-   ```
+   ⚠️ Keep this secret. Never commit it to git or share it publicly.
 
-   ⚠️ **Keep this secret!** Never commit it to git or share publicly.
+4. Scroll down to **"Privileged Gateway Intents"**:
+   - ✅ Enable **"Message Content Intent"** (required to read message text)
+   - Save changes
 
-### Step 4: Enable Privileged Intents
-
-Still on the **"Bot"** page, scroll down to **"Privileged Gateway Intents"**:
-
-1. ✅ Enable **"Message Content Intent"** (required to read message text)
-2. Save changes
-
----
-
-## Part 2: Generate Bot Invite URL
-
-### Step 5: Configure OAuth2 Permissions
+### Step 3: Generate Invite URL
 
 1. In left sidebar, click **"OAuth2"** → **"URL Generator"**
-2. Under **"Scopes"**, select:
-   - ✅ **bot**
-   - ✅ **applications.commands** (for slash commands)
+   _(Ignore the Installation tab — use URL Generator directly)_
+2. Under **"Scopes"**, select: ✅ `bot` and ✅ `applications.commands`
+3. Under **"Bot Permissions"**, select the minimum required:
 
-3. Under **"Bot Permissions"**, select:
-   - ✅ **Send Messages**
-   - ✅ **Send Messages in Threads**
-   - ✅ **Create Public Threads**
-   - ✅ **Read Message History**
-   - ✅ **Use Slash Commands**
-   - ✅ **Manage Threads** (optional, for auto-archive features)
+   | Permission | Purpose |
+   |---|---|
+   | Send Messages | Reply to users |
+   | Send Messages in Threads | Respond inside threads |
+   | Create Public Threads | Start new session threads |
+   | Read Message History | Fetch last message for cancel feedback |
+   | Use Slash Commands | Register and respond to `/` commands |
+   | Manage Threads | Rename threads from first message |
+   | Attach Files | _(future: file attachment support)_ |
 
-4. Scroll down and **copy the Generated URL**
+   > **Personal use shortcut:** Grant permission value `8515702525261888` for all message permissions.
 
-   Example URL:
-   ```
-   https://discord.com/oauth2/authorize?client_id=1234567890&permissions=534790688768&scope=bot%20applications.commands
-   ```
+4. Copy the **Generated URL** at the bottom
 
----
+### Step 4: Add Bot to Your Server
 
-## Part 3: Invite Bot to Your Test Server
+1. Open the generated URL in your browser
+2. Select your server from the dropdown
+3. Click **"Continue"** → **"Authorize"**
 
-### Step 6: Create or Use Existing Discord Server
-
-If you don't have a test server:
-1. Open Discord app/web
-2. Click **"+"** icon in server list (left sidebar)
-3. Click **"Create My Own"**
-4. Choose **"For me and my friends"**
-5. Name it (e.g., "tofucode Testing")
-
-### Step 7: Add Bot to Server
-
-1. Open the **Generated URL** from Step 5 in your browser
-2. Select your test server from dropdown
-3. Click **"Continue"**
-4. Review permissions
-5. Click **"Authorize"**
-6. Complete captcha if prompted
-
-Your bot should now appear **offline** in your server's member list (will go online when tofucode starts).
+The bot will appear offline in your server until tofucode starts.
 
 ---
 
-## Part 4: Get Your Guild (Server) ID
+## Part 2: Get Your Guild ID
 
-### Step 8: Enable Developer Mode in Discord
-
-1. Open Discord **User Settings** (gear icon)
-2. Go to **"Advanced"**
-3. Enable **"Developer Mode"**
-4. Close settings
-
-### Step 9: Copy Guild ID
-
-1. Right-click your test server icon (left sidebar)
-2. Click **"Copy Server ID"**
-3. Save this ID (you'll use it in `.env`)
-
-   Example Guild ID:
-   ```
-   1234567890123456789
-   ```
+1. Open Discord **User Settings** → **"Advanced"** → Enable **"Developer Mode"**
+2. Right-click your server icon → **"Copy Server ID"**
 
 ---
 
-## Part 5: Configure tofucode
+## Part 3: Configure tofucode
 
-### Step 10: Create/Update `.env` File
+**Option A — Config file** (`config.json`):
 
-In your tofucode project root (`/home/ts/projects/tofucode/`):
-
-```bash
-# Create or edit .env file
-cat >> .env << 'EOF'
-
-# Discord Bot Configuration
-DISCORD_ENABLED=true
-DISCORD_BOT_TOKEN=YOUR_BOT_TOKEN_HERE
-DISCORD_GUILD_ID=YOUR_GUILD_ID_HERE
-DISCORD_STATUS=Coding with Claude
-
-EOF
-```
-
-Replace:
-- `YOUR_BOT_TOKEN_HERE` with the token from Step 4
-- `YOUR_GUILD_ID_HERE` with the Guild ID from Step 9
-
-**Example `.env` entry:**
-```bash
-DISCORD_ENABLED=true
-DISCORD_BOT_TOKEN=YOUR_BOT_TOKEN_HERE
-DISCORD_GUILD_ID=1234567890123456789
-DISCORD_STATUS=Coding with Claude
-```
-
----
-
-## Part 6: Test the Bot
-
-### Step 11: Start tofucode with Discord Bot
-
-```bash
-cd /home/ts/projects/tofucode
-
-# Start with Discord bot enabled
-npm run dev
-
-# Or explicitly:
-DISCORD_ENABLED=true npm run dev
-```
-
-**Expected output in console:**
-```
-tofucode v1.0.5 running on http://localhost:3001
-WebSocket available at ws://localhost:3001/ws
-Discord bot logged in as tofucode Test Bot#1234
-Registered 3 slash commands for guild 1234567890123456789
-```
-
-**In Discord:**
-- Your bot should now appear **online** (green status)
-
-### Step 12: Test Slash Commands
-
-In your Discord test server, type `/` in any channel. You should see:
-- `/setup` - Map channel to project
-- `/session` - List sessions
-- `/cancel` - Cancel running task
-
----
-
-## Part 7: Test Channel Mapping
-
-### Step 13: Create Test Channel
-
-In Discord:
-1. Right-click your server name → **"Create Channel"**
-2. Name it (e.g., `test-backend`)
-3. Click **"Create Channel"**
-
-### Step 14: Map Channel to Project
-
-In the `#test-backend` channel, run:
-```
-/setup project:/home/ts/projects/tofucode
-```
-
-**Expected bot response:**
-```
-✅ Channel configured!
-**Project**: `/home/ts/projects/tofucode`
-**Slug**: `-home-ts-projects-tofucode`
-
-Create threads in this channel to start sessions with Claude Code.
-Use `/session` to list existing sessions.
-```
-
-**Verify mapping file created:**
-```bash
-cat ~/.tofucode/discord-channels.json
-```
-
-Should show:
 ```json
 {
-  "CHANNEL_ID": {
-    "projectPath": "/home/ts/projects/tofucode",
-    "projectSlug": "-home-ts-projects-tofucode",
-    "guildId": "1234567890123456789",
-    "configuredBy": "YOUR_USER_ID",
-    "configuredAt": "2026-02-17T..."
-  }
+  "discord": true,
+  "discordToken": "YOUR_BOT_TOKEN_HERE",
+  "discordGuildId": "YOUR_GUILD_ID_HERE",
+  "discordStatus": "Coding with Claude"
 }
 ```
 
+```bash
+npx tofucode --config config.json
+```
+
+**Option B — Environment variables:**
+
+```bash
+DISCORD_ENABLED=true \
+DISCORD_BOT_TOKEN=YOUR_BOT_TOKEN_HERE \
+DISCORD_GUILD_ID=YOUR_GUILD_ID_HERE \
+npx tofucode
+```
+
 ---
 
-## Part 8: Test Thread Session
+## Part 4: Start & Verify
 
-### Step 15: Create Thread
-
-In `#test-backend` channel:
-1. Hover over any message (or the channel name)
-2. Click 🧵 **"Create Thread"** button
-3. Name it: `Test Session 1`
-4. Click **"Create Thread"**
-
-### Step 16: Send Message to Bot
-
-In the thread, send a message:
-```
-help me list all files in this directory
-```
-
-**Expected behavior:**
-1. Bot replies with `:hourglass: Thinking...`
-2. Message gets edited with Claude's response (streaming)
-3. Final response shows tool use (Bash/Glob commands) and result
-
-**Verify session mapping:**
 ```bash
-cat ~/.tofucode/discord-sessions.json
+npx tofucode --config config.json
 ```
 
-Should show thread → session mapping.
-
-**Verify JSONL session file:**
-```bash
-ls -la ~/.claude/projects/-home-ts-projects-tofucode/
+Expected log output:
+```
+tofucode v1.1.0 running on http://localhost:3001
+Discord bot integration enabled
+[Discord] Bot logged in as YourBot#1234
+[Discord] Registered 6 slash commands for guild 1234567890123456789
+[Discord] Web UI bridge started
 ```
 
-Should see a new `.jsonl` file (session history).
+The bot should appear **online** (green) in your Discord server.
+
+---
+
+## Part 5: Usage
+
+### Channel Setup
+
+Each Discord channel maps to one tofucode project. Run in the channel you want to configure:
+
+```
+/setup project:/home/user/projects/myapp
+```
+
+### Starting a Session
+
+Create a thread in the configured channel. Each thread is an isolated Claude Code session. Just type your message — the bot will respond.
+
+> Sessions are also accessible from the Web UI. Conversations started in Discord appear in tofucode's session list, and vice versa.
+
+---
+
+## Slash Command Reference
+
+| Command | Where | Description |
+|---|---|---|
+| `/setup project:<path>` | Channel | Map this channel to a project directory |
+| `/session` | Channel | List recent sessions for this channel's project |
+| `/session` | Thread | Show current session info (ID, status, message count) |
+| `/resume` | Channel | Resume a previous session in a new thread |
+| `/cancel` | Thread | Cancel the currently running task |
+| `/list path:<path>` | Anywhere | List subdirectories at a path (for finding projects) |
+| `/status` | Anywhere | Show bot config, active tasks, and server info |
+
+### `/setup`
+
+Links a Discord channel to a project folder. All threads in this channel will run Claude Code sessions against that project.
+
+- If the channel is already mapped, shows a confirmation prompt before overriding
+- Changing the project path does not affect existing threads (they retain their session IDs)
+
+```
+/setup project:/home/user/projects/myapp
+```
+
+### `/session`
+
+**In a channel:** Lists the 10 most recent sessions with message counts and active status (🟡 = currently running).
+
+**In a thread:** Shows the current session's ID, project, message count, status, and start time.
+
+### `/resume`
+
+Shows a dropdown of recent sessions. Select one to create a new thread that resumes that conversation, with the last 3 turns of history shown as context.
+
+If the original thread was deleted, a new thread is created automatically.
+
+### `/cancel`
+
+Cancels the running Claude task in the current thread. The last bot message is updated with a `⛔ Cancelled` footer.
+
+### `/list`
+
+Lists subdirectories at an absolute path — useful for finding your project folder path to use in `/setup`.
+
+```
+/list path:/home/user/projects
+```
+
+Respects the `--root` restriction if configured. Results are ephemeral (only visible to you).
+
+### `/status`
+
+Shows:
+- **Channel config** — mapped project, configured by, thread count
+- **Active tasks** — threads with currently running Claude tasks
+- **Bot stats** — total mapped channels and threads
+- **Server config** — root path, permission mode, model versions
 
 ---
 
 ## Troubleshooting
 
-### Bot stays offline
-- Check `DISCORD_BOT_TOKEN` is correct
-- Check bot has been invited to server
+**Bot stays offline**
+- Check `DISCORD_BOT_TOKEN` is correct (reset and copy again if unsure)
+- Check bot has been added to server via the OAuth2 URL Generator link
 - Check console for error messages
 
-### Slash commands don't appear
-- Wait 1 minute (registration takes time)
+**"Used disallowed intents" error**
+- Enable **Message Content Intent** in the Bot tab of the Developer Portal
+- Re-authorize the bot using the OAuth2 URL Generator link (not the Installation tab)
+
+**Slash commands don't appear**
+- Wait 1 minute — guild-specific commands may take a moment to propagate
 - Check `DISCORD_GUILD_ID` matches your server ID
-- Try in a different channel
 - Restart Discord app
 
-### `/setup` says "Access denied"
-- Check project path exists: `ls -la /path/to/project`
-- Check path is absolute (starts with `/`)
-- If using `ROOT_PATH` env var, check path is within root
+**`/setup` says "Access denied"**
+- Check the project path exists and is absolute
+- If `--root` is configured, the path must be within that root
 
-### Bot doesn't respond to messages
-- Check Message Content Intent is enabled (Step 4)
-- Check bot has permissions in channel
-- Check console logs for errors
+**Bot doesn't respond to messages**
+- Confirm Message Content Intent is enabled in the Bot tab
+- Check the bot has permission to send messages in that channel
+- Check server logs for errors
 
-### "channelId not found" error
-- Make sure you ran `/setup` in the parent channel before creating thread
-- Check `~/.tofucode/discord-channels.json` exists and has correct channel ID
-
----
-
-## What You Have Now
-
-✅ Discord bot application created
-✅ Bot invited to your test server
-✅ Bot token and Guild ID configured in `.env`
-✅ tofucode server running with Discord bot
-✅ Channel mapped to project via `/setup`
-✅ Thread created and ready for testing
+**Sessions not found for a project with dots in the name (e.g. `myapp.com`)**
+- Fixed in v1.1.0 — dots in project paths are now correctly converted to hyphens in slugs
+- If you set up the channel before v1.1.0, re-run `/setup` to regenerate the correct slug
 
 ---
 
-## Next Steps for Development
+## Storage
 
-1. **Test concurrent threads**: Create multiple threads, send messages simultaneously
-2. **Test session resumption**: Send multiple messages in same thread, verify conversation history
-3. **Test `/cancel`**: Start long-running task, run `/cancel` mid-execution
-4. **Test parent channel behavior**: Send message in parent channel (not thread), verify redirect
-5. **Test long responses**: Trigger response >2000 chars, verify chunking
-6. **Test error handling**: Invalid path in `/setup`, unmapped channel, etc.
+tofucode stores Discord mappings in `~/.tofucode/`:
 
----
+| File | Contents |
+|---|---|
+| `discord-channels.json` | Channel → project mappings (set via `/setup`) |
+| `discord-sessions.json` | Thread → session mappings (created per thread) |
 
-## Cleanup After Testing
-
-### Remove bot from server:
-1. Right-click bot name in member list
-2. Click **"Kick"**
-
-### Delete bot application:
-1. Go to https://discord.com/developers/applications
-2. Select your bot
-3. **"Settings"** → **"General"**
-4. Scroll down → **"Delete Application"**
-
-### Remove local config:
-```bash
-rm ~/.tofucode/discord-channels.json
-rm ~/.tofucode/discord-sessions.json
-```
+Claude session history (JSONL) is shared with the Web UI at `~/.claude/projects/`.

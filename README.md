@@ -324,6 +324,19 @@ The PWA updates independently from the backend npm package. For full updates (ba
 
 ---
 
+## Discord Bot
+
+tofucode supports a bring-your-own-bot Discord integration, letting you run Claude Code sessions from Discord threads.
+
+- Each Discord **channel** maps to one project
+- Each Discord **thread** is an isolated Claude Code session
+- Sessions are shared with the Web UI — continue in either interface
+- Slash commands: `/setup`, `/session`, `/resume`, `/cancel`, `/list`, `/status`
+
+See the **[Discord Setup Guide](./docs/DISCORD_SETUP_GUIDE.md)** for full setup instructions, configuration options, and command reference.
+
+---
+
 ## Security
 
 - **Authentication enabled by default** - Set password on first run

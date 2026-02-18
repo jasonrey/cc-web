@@ -5,6 +5,18 @@ All notable changes to tofucode.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-02-18
+
+### Added
+- **Discord Bot Integration** — Bring-your-own-bot support. Run Claude Code sessions from Discord threads, mirrored to the Web UI via an internal event bus. See [Discord Setup Guide](docs/DISCORD_SETUP_GUIDE.md).
+  - Channel-to-project mapping via `/setup`
+  - Thread-per-session model with persistent session storage
+  - Slash commands: `/setup`, `/session`, `/cancel`, `/resume`, `/list`, `/status`
+  - Minimal streaming output — tool activity shown as compact footer, AI response stays clean
+  - Auto-rename threads from first message content
+  - User mention on long-running task completion
+  - Web UI → Discord sync via internal event bus (sessions started in Web UI create mirrored Discord threads)
+
 ## [1.0.5] - 2026-02-18
 
 ### Added
