@@ -1,5 +1,6 @@
 <script setup>
-import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { onUnmounted, ref, watch } from 'vue';
+import UsageStats from './UsageStats.vue';
 
 const props = defineProps({
   show: {
@@ -14,9 +15,15 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  usageStats: {
+    type: Object,
+    default: null,
+  },
 });
 
-const emit = defineEmits(['close', 'update', 'restart']);
+const activeTab = ref('settings');
+
+const emit = defineEmits(['close', 'update', 'restart', 'fetch-usage']);
 
 // Local copy of settings
 const localSettings = ref({ ...props.settings });
@@ -60,12 +67,14 @@ function handleKeydown(e) {
   }
 }
 
-// Add keyboard listener when modal is shown
+// Add keyboard listener when modal is shown; fetch usage on open
 watch(
   () => props.show,
   (isVisible) => {
     if (isVisible) {
       document.addEventListener('keydown', handleKeydown);
+      activeTab.value = 'settings';
+      emit('fetch-usage');
     } else {
       document.removeEventListener('keydown', handleKeydown);
     }
@@ -169,7 +178,26 @@ async function handleClearCacheAndUpdate() {
         </button>
       </div>
 
+      <!-- Tab bar -->
+      <div class="tab-bar">
+        <button
+          class="tab-btn"
+          :class="{ active: activeTab === 'settings' }"
+          @click="activeTab = 'settings'"
+        >Settings</button>
+        <button
+          class="tab-btn"
+          :class="{ active: activeTab === 'usage' }"
+          @click="activeTab = 'usage'; emit('fetch-usage')"
+        >Usage</button>
+      </div>
+
       <div class="modal-body">
+        <!-- Usage Stats Tab -->
+        <UsageStats v-if="activeTab === 'usage'" :stats="usageStats" />
+
+        <!-- Settings Tab -->
+        <template v-if="activeTab === 'settings'">
         <!-- Debug Mode Setting -->
         <div class="setting-item">
           <label class="setting-label">
@@ -321,6 +349,7 @@ async function handleClearCacheAndUpdate() {
             </transition>
           </div>
         </div>
+        </template>
       </div>
     </div>
   </div>
@@ -385,6 +414,35 @@ async function handleClearCacheAndUpdate() {
 .close-btn:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
+}
+
+.tab-bar {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 20px;
+  gap: 2px;
+}
+
+.tab-btn {
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-bottom: -1px;
+}
+
+.tab-btn:hover {
+  color: var(--text-primary);
+}
+
+.tab-btn.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--text-primary);
 }
 
 .modal-body {
