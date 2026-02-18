@@ -477,9 +477,10 @@ export async function loadSessionHistory(projectSlug, sessionId, options = {}) {
           entriesToParse = buffer.slice(startIdx, searchEnd);
           effectiveOffset = buffer.length - searchEnd;
         } else {
-          // No turns found, return empty
-          entriesToParse = [];
-          effectiveOffset = offset;
+          // No user turns found before searchEnd - load whatever remains (e.g. summary)
+          // and signal no more older messages
+          entriesToParse = buffer.slice(0, searchEnd);
+          effectiveOffset = 0;
         }
       } else if (loadLastTurn && offset === 0) {
         // INITIAL LOAD: Load last N turns (specified by turnLimit in initial call)
@@ -526,15 +527,19 @@ export async function loadSessionHistory(projectSlug, sessionId, options = {}) {
         messages.push(...parsed);
       }
 
-      // hasOlderMessages based on entries, not messages (one entry can expand to multiple messages)
+      // hasOlderMessages: check if there are more entries before what we loaded,
+      // within the buffer (which stops at summary boundary when fullHistory=false).
+      // Using buffer.length instead of totalLineCount to correctly stop at summary.
+      const hasOlderMessages = effectiveOffset > 0;
+
       resolve({
         messages,
-        hasOlderMessages:
-          effectiveOffset + entriesToParse.length < totalLineCount,
+        hasOlderMessages,
         summaryCount,
         totalEntries: totalLineCount,
         totalTurns: totalSessionTurns, // Total turns in full session history
         loadedTurns: loadedTurnCount,
+        effectiveOffset, // The new offset for the next load request
       });
     });
 

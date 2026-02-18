@@ -58,7 +58,7 @@ export async function handler(ws, message, context) {
       hasOlderMessages: result.hasOlderMessages,
       totalTurns: result.totalTurns,
       loadedTurns: result.loadedTurns,
-      offset,
+      offset: result.effectiveOffset, // Send back the new offset for the next load request
     });
   } catch (err) {
     console.error('Failed to load older messages:', err);
