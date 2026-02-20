@@ -26,6 +26,25 @@ const updateAvailable = ref(null); // { currentVersion, latestVersion, updateUrl
 // Root path restriction (if --root is set on server)
 const rootPath = ref(null);
 
+// Clone dialog state (global so sidebar + homepage can both trigger it)
+const showCloneDialog = ref(false);
+const cloneInitialDir = ref(null);
+
+function openCloneDialog(initialDir = null) {
+  cloneInitialDir.value = initialDir;
+  showCloneDialog.value = true;
+  // Ensure currentFolder is populated (resolves to $HOME on server) so the
+  // modal can default the destination field even when opened from non-home pages
+  if (!currentFolder.value) {
+    sendGlobal({ type: 'browse_folder', path: null });
+  }
+}
+
+function closeCloneDialog() {
+  showCloneDialog.value = false;
+  cloneInitialDir.value = null;
+}
+
 let globalWs = null;
 let globalReconnectTimeout = null;
 
@@ -411,6 +430,12 @@ export function useWebSocket() {
     currentVersion: readonly(currentVersion),
     updateAvailable: readonly(updateAvailable),
     rootPath: readonly(rootPath),
+
+    // Clone dialog
+    showCloneDialog: readonly(showCloneDialog),
+    cloneInitialDir: readonly(cloneInitialDir),
+    openCloneDialog,
+    closeCloneDialog,
 
     // Connection
     connect: connectGlobal,

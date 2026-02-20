@@ -28,6 +28,7 @@ const {
   dismissUpdate,
   send,
   onMessage,
+  openCloneDialog,
 } = useWebSocket();
 
 // Upgrade state
@@ -231,6 +232,17 @@ function handleOverlayClick() {
 
       <!-- Projects Tab -->
       <ul v-else-if="activeTab === 'projects'" class="sidebar-list">
+        <li class="sidebar-item clone-item">
+          <button class="clone-project-btn" @click="openCloneDialog()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="18" cy="18" r="3"/>
+              <circle cx="6" cy="6" r="3"/>
+              <circle cx="6" cy="18" r="3"/>
+              <path d="M6 9v3m0 0v3m0-3h3M15 6a9 9 0 0 0-9 9"/>
+            </svg>
+            Clone Repository
+          </button>
+        </li>
         <li
           v-for="project in projects"
           :key="project.slug"
@@ -261,7 +273,7 @@ function handleOverlayClick() {
             @click.stop="startNewSession(project.slug)"
             title="New session"
           >
-            New
+            +
           </button>
         </li>
         <li v-if="projects.length === 0" class="sidebar-empty">
@@ -657,13 +669,14 @@ function handleOverlayClick() {
 
 .project-item .quick-new-btn {
   opacity: 0;
-  padding: 4px 8px;
+  padding: 2px 8px;
   margin-right: 10px;
   border-radius: var(--radius-sm);
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 500;
-  color: #3b82f6;
-  background: rgba(59, 130, 246, 0.1);
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
   transition: opacity 0.15s, background 0.15s, color 0.15s;
   flex-shrink: 0;
 }
@@ -673,8 +686,8 @@ function handleOverlayClick() {
 }
 
 .quick-new-btn:hover {
-  background: rgba(59, 130, 246, 0.2);
-  color: #2563eb;
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .sidebar-empty {
@@ -682,6 +695,32 @@ function handleOverlayClick() {
   text-align: center;
   color: var(--text-muted);
   font-size: 13px;
+}
+
+.clone-item {
+  padding: 6px 4px;
+}
+
+.clone-project-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  cursor: pointer;
+}
+
+.clone-project-btn:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--text-muted);
+  color: var(--text-primary);
 }
 
 /* Animated spinner for running status */

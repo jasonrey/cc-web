@@ -27,6 +27,7 @@ import { handler as getSessions } from './get-sessions.js';
 import { handler as getSettings } from './get-settings.js';
 import { handler as getTaskStatuses } from './get-task-statuses.js';
 import { handler as getUsageStats } from './get-usage-stats.js';
+import { handler as gitClone } from './git-clone.js';
 import { handler as loadOlderMessages } from './load-older-messages.js';
 import { handler as newSession } from './new-session.js';
 import { handler as prompt } from './prompt.js';
@@ -86,6 +87,7 @@ export const handlers = {
   restart: handleRestart,
   upgrade: handleUpgrade,
   get_git_diff: getGitDiff,
+  git_clone: gitClone,
   get_settings: getSettings,
   update_settings: updateSettings,
   get_usage_stats: getUsageStats,

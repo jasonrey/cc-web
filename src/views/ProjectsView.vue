@@ -18,6 +18,7 @@ const {
   getProjects,
   getRecentSessionsImmediate,
   browseFolder,
+  openCloneDialog,
 } = useWebSocket();
 
 const isEditingPath = ref(false);
@@ -198,6 +199,15 @@ function cancelEditingPath() {
               @keydown.escape.prevent="cancelEditingPath"
             />
           </form>
+          <button class="clone-btn" @click="openCloneDialog(currentFolder)" :disabled="!currentFolder" title="Clone a git repository into this folder">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="18" cy="18" r="3"/>
+              <circle cx="6" cy="6" r="3"/>
+              <circle cx="6" cy="18" r="3"/>
+              <path d="M6 9v3m0 0v3m0-3h3M15 6a9 9 0 0 0-9 9"/>
+            </svg>
+            Clone
+          </button>
           <button class="select-btn" @click="startNewSession(currentFolder)" :disabled="!currentFolder">
             Select This Folder
           </button>
@@ -512,6 +522,31 @@ function cancelEditingPath() {
 .path-input:focus {
   outline: none;
   border-color: var(--text-muted);
+}
+
+.clone-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.15s, opacity 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.clone-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.clone-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .select-btn {

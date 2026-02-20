@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, provide, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import CommandPalette from './components/CommandPalette.vue';
 import FilePicker from './components/FilePicker.vue';
+import GitCloneModal from './components/GitCloneModal.vue';
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal.vue';
 import PwaPrompt from './components/PwaPrompt.vue';
 import SettingsModal from './components/SettingsModal.vue';
@@ -15,8 +16,12 @@ const {
   connected,
   recentSessions,
   getRecentSessionsImmediate,
+  getProjects,
   send,
   onMessage,
+  showCloneDialog,
+  cloneInitialDir,
+  closeCloneDialog,
 } = useWebSocket();
 
 const route = useRoute();
@@ -138,6 +143,13 @@ function handleGlobalKeydown(e) {
 
 function closePalette() {
   showPalette.value = false;
+}
+
+function handleCloned({ projectSlug }) {
+  closeCloneDialog();
+  // Refresh projects list so sidebar shows the newly cloned project
+  getProjects();
+  router.push({ name: 'sessions', params: { project: projectSlug } });
 }
 
 function closeFilePicker() {
@@ -270,6 +282,12 @@ onUnmounted(() => {
       @update="updateSettings"
       @restart="handleRestart"
       @fetch-usage="fetchUsageStats"
+    />
+    <GitCloneModal
+      :show="showCloneDialog"
+      :initial-target-dir="cloneInitialDir"
+      @close="closeCloneDialog"
+      @cloned="handleCloned"
     />
     <KeyboardShortcutsModal
       v-if="showHelp"
