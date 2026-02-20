@@ -64,6 +64,7 @@ const {
   killProcess,
   listProcesses,
   clearTerminal,
+  removeWatchProcess,
   clearTaskStatus,
   pendingQuestion,
   answerQuestion,
@@ -103,7 +104,9 @@ function getSessionUrl(session) {
 
 // Mode state: 'chat' | 'terminal' | 'files'
 const currentMode = ref('chat');
-const terminalSubTab = ref('history'); // 'active' | 'history'
+const terminalSubTab = ref('history'); // 'bookmarks' | 'active' | 'history'
+const bookmarks = ref({ global: [], project: [] });
+const watchEnabledIds = ref(new Set()); // Set<bookmarkId> — which bookmarks have watch enabled
 const terminalInput = ref('');
 const terminalCwd = ref(''); // Editable CWD for terminal commands
 const terminalInputRef = ref(null);
@@ -247,23 +250,8 @@ watch(pendingQuestion, (question) => {
   }
 });
 
-// Mobile terminal - cycle through Active/History on tap
 function handleTerminalTabClick() {
-  // On mobile (<=768px), cycle through terminal subtabs
-  if (window.innerWidth <= 768) {
-    if (currentMode.value !== 'terminal') {
-      // First tap: switch to terminal mode (keep last subtab selection)
-      currentMode.value = 'terminal';
-      // Don't change terminalSubTab - it retains the last value
-    } else {
-      // Already in terminal mode: toggle between Active/History
-      terminalSubTab.value =
-        terminalSubTab.value === 'active' ? 'history' : 'active';
-    }
-  } else {
-    // Desktop: just switch to terminal mode
-    currentMode.value = 'terminal';
-  }
+  currentMode.value = 'terminal';
 }
 
 // Flag to prevent auto-save during session transitions
@@ -407,10 +395,11 @@ function handleKeydown(e) {
     }
     if (e.key === '2') {
       e.preventDefault();
-      // If already in terminal mode, toggle between active/history tabs
+      // If already in terminal mode, cycle through bookmarks → active → history
       if (currentMode.value === 'terminal') {
-        terminalSubTab.value =
-          terminalSubTab.value === 'active' ? 'history' : 'active';
+        const tabs = ['bookmarks', 'active', 'history'];
+        const idx = tabs.indexOf(terminalSubTab.value);
+        terminalSubTab.value = tabs[(idx + 1) % tabs.length];
       } else {
         currentMode.value = 'terminal';
       }
@@ -517,7 +506,10 @@ onMounted(() => {
   }
 
   // Restore terminal sub-tab
-  if (query.terminalTab && ['active', 'history'].includes(query.terminalTab)) {
+  if (
+    query.terminalTab &&
+    ['active', 'history', 'bookmarks'].includes(query.terminalTab)
+  ) {
     terminalSubTab.value = query.terminalTab;
   }
 
@@ -943,12 +935,15 @@ watch(
       }
 
       // Reload terminal processes AFTER session selection to avoid race condition
-      // Terminal processes are project-scoped, so this ensures the response
-      // arrives after session_selected is processed
       // Use nextTick to ensure project_selected message is processed first
       if (shouldReloadTerminal) {
         nextTick(() => listProcesses());
       }
+
+      // Always fetch bookmarks when connected or project changes (project-scoped, cheap)
+      nextTick(() =>
+        send({ type: 'terminal:get_bookmarks', projectSlug: slug }),
+      );
     }
   },
   { immediate: true },
@@ -1400,7 +1395,12 @@ function handleTerminalKeydown(e) {
 }
 
 function handleTerminalKill(processId) {
-  killProcess(processId);
+  // Watch processes manage their own state via terminal:watch:* events.
+  // Skipping the post-kill listProcesses() refresh avoids racing with those
+  // broadcasts and preventing duplicate entries in the process list.
+  const proc = terminalProcesses.value.find((p) => p.id === processId);
+  const skipRefresh = proc?.isWatch ?? false;
+  killProcess(processId, undefined, skipRefresh);
 }
 
 function handleTerminalClear(processId) {
@@ -1410,6 +1410,45 @@ function handleTerminalClear(processId) {
 function handleTerminalReplay(command, cwd) {
   // Execute the command again as if user ran it
   execCommand(command, cwd);
+}
+
+function handleAddBookmark(scope, command, cwd) {
+  send({
+    type: 'terminal:add_bookmark',
+    scope,
+    projectSlug: projectSlug.value,
+    command,
+    cwd,
+  });
+}
+
+function handleRemoveBookmark(scope, id) {
+  send({
+    type: 'terminal:remove_bookmark',
+    scope,
+    projectSlug: projectSlug.value,
+    id,
+  });
+}
+
+function handlePlayBookmark(command, cwd) {
+  terminalSubTab.value = 'history';
+  execCommand(command, cwd || terminalCwd.value);
+}
+
+function handleWatchUpdate(bookmarkId, scope, watch) {
+  const wasAlreadyActive = watchEnabledIds.value.has(bookmarkId);
+  send({
+    type: 'terminal:watch:update',
+    bookmarkId,
+    scope,
+    projectSlug: projectSlug.value,
+    watch,
+  });
+  // Only switch to active tab when newly enabling a watch (not reconfiguring one already running)
+  if (watch?.enabled && !wasAlreadyActive) {
+    terminalSubTab.value = 'active';
+  }
 }
 
 function toggleHistoryExpand(processId) {
@@ -1828,6 +1867,33 @@ function handleFileMessage(msg) {
 // Register message handler (returns unsubscribe fn, auto-cleaned up on unmount by composable)
 onMessage(handleFileMessage);
 
+// Handle bookmark and watch responses from server
+onMessage((msg) => {
+  if (msg.type === 'terminal:bookmarks') {
+    bookmarks.value = { global: msg.global ?? [], project: msg.project ?? [] };
+  } else if (msg.type === 'terminal:watch:state') {
+    const next = new Set(msg.active ?? []);
+    // Clean up completed process entries for watches that are no longer active
+    for (const id of watchEnabledIds.value) {
+      if (!next.has(id)) {
+        removeWatchProcess(id);
+      }
+    }
+    watchEnabledIds.value = next;
+  }
+});
+
+// Clear stale watch state when switching projects so the UI doesn't show
+// watches from the previous project during the transition window
+watch(
+  () => projectSlug.value,
+  (_newSlug, oldSlug) => {
+    if (oldSlug !== undefined) {
+      watchEnabledIds.value = new Set();
+    }
+  },
+);
+
 // Initialize files mode when switching to it OR when projectStatus becomes available
 watch(currentMode, (mode) => {
   if (mode === 'files' && !filesCurrentPath.value && projectStatus.value.cwd) {
@@ -1982,6 +2048,8 @@ watch(
     // Sync terminal sub-tab from URL
     if (query.terminalTab === 'active') {
       terminalSubTab.value = 'active';
+    } else if (query.terminalTab === 'bookmarks') {
+      terminalSubTab.value = 'bookmarks';
     } else {
       terminalSubTab.value = 'history';
     }
@@ -2092,11 +2160,18 @@ watch(
         :processes="terminalProcesses"
         :expanded-history="expandedHistory"
         :active-tab="terminalSubTab"
+        :bookmarks="bookmarks"
+        :watch-enabled-ids="watchEnabledIds"
+        :project-slug="projectSlug"
         @kill="handleTerminalKill"
         @clear="handleTerminalClear"
         @toggle-expand="toggleHistoryExpand"
         @update:active-tab="terminalSubTab = $event"
         @replay="handleTerminalReplay"
+        @add-bookmark="handleAddBookmark"
+        @remove-bookmark="handleRemoveBookmark"
+        @play-bookmark="handlePlayBookmark"
+        @watch-update="handleWatchUpdate"
       />
     </main>
 
@@ -2299,7 +2374,7 @@ watch(
             MD
           </button>
 
-          <!-- Terminal clear button (terminal mode only) -->
+          <!-- Terminal clear button (terminal mode, history tab only) — placed before subnav to avoid layout shift -->
           <button
             v-if="terminalMode && terminalSubTab === 'history'"
             class="action-btn clear-terminal-btn"
@@ -2312,6 +2387,47 @@ watch(
             </svg>
             Clear
           </button>
+
+          <!-- Terminal subnav (terminal mode only) -->
+          <div v-if="terminalMode" class="terminal-subnav">
+            <button
+              class="terminal-subnav-tab"
+              :class="{ active: terminalSubTab === 'history' }"
+              @click="terminalSubTab = 'history'"
+              title="Command history"
+            >
+              <!-- Clock for History -->
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+              <span class="subnav-label">History</span>
+            </button>
+            <button
+              class="terminal-subnav-tab"
+              :class="{ active: terminalSubTab === 'active' }"
+              @click="terminalSubTab = 'active'"
+              title="Active processes"
+            >
+              <!-- Lightning bolt for Active -->
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+              </svg>
+              <span class="subnav-label">Active</span>
+              <span v-if="runningProcessCount > 0" class="subnav-badge">{{ runningProcessCount }}</span>
+            </button>
+            <button
+              class="terminal-subnav-tab"
+              :class="{ active: terminalSubTab === 'bookmarks' }"
+              @click="terminalSubTab = 'bookmarks'"
+              title="Bookmarks"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+              </svg>
+              <span class="subnav-label">Bookmarks</span>
+            </button>
+          </div>
 
           <!-- Model selector (chat mode only) -->
           <div v-if="!terminalMode && !filesMode" class="model-tabs">
@@ -2550,29 +2666,7 @@ watch(
               <polyline points="4 17 10 11 4 5"/>
               <line x1="12" y1="19" x2="20" y2="19"/>
             </svg>
-            <span class="terminal-label-desktop">Terminal</span>
-            <span class="terminal-label-mobile">{{ terminalSubTab === 'active' ? 'Active' : 'History' }}</span>
-            <span class="mode-badge" v-if="runningProcessCount > 0">{{ runningProcessCount }}</span>
-
-            <!-- Terminal subtabs (inline, only shown when terminal mode active on desktop) -->
-            <div v-if="currentMode === 'terminal'" class="terminal-subtabs" @click.stop>
-              <button
-                class="terminal-subtab"
-                :class="{ active: terminalSubTab === 'active' }"
-                @click="terminalSubTab = 'active'"
-                title="Active processes"
-              >
-                Active
-              </button>
-              <button
-                class="terminal-subtab"
-                :class="{ active: terminalSubTab === 'history' }"
-                @click="terminalSubTab = 'history'"
-                title="Command history"
-              >
-                History
-              </button>
-            </div>
+            <span class="mode-label">Terminal</span>
           </button>
           <button
             class="mode-tab"
@@ -3614,38 +3708,6 @@ watch(
   flex-shrink: 0;
 }
 
-.terminal-subtabs {
-  display: flex;
-  gap: 4px;
-  margin-left: 6px;
-  padding-left: 6px;
-  border-left: 1px solid var(--border-color);
-}
-
-.terminal-subtab {
-  display: flex;
-  align-items: center;
-  padding: 2px 8px;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--text-muted);
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-
-.terminal-subtab:hover {
-  background: var(--bg-hover);
-  color: var(--text-secondary);
-}
-
-.terminal-subtab.active {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-}
-
 .mode-tab {
   display: flex;
   align-items: center;
@@ -3687,6 +3749,58 @@ watch(
   color: var(--bg-primary);
   border-radius: 10px;
   font-weight: 600;
+}
+
+/* Terminal subnav (in toolbar-right, replaces inline subtabs) */
+.terminal-subnav {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+}
+
+.terminal-subnav-tab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.terminal-subnav-tab:hover {
+  color: var(--text-secondary);
+}
+
+.terminal-subnav-tab.active {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+.subnav-badge {
+  font-size: 10px;
+  padding: 1px 5px;
+  background: var(--warning-color);
+  color: var(--bg-primary);
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+/* Mobile: hide subnav labels, show icons only */
+@media (max-width: 639px) {
+  .subnav-label {
+    display: none;
+  }
+  .terminal-subnav-tab {
+    padding: 4px 8px;
+  }
 }
 
 /* Files explorer header (above toolbar) */
@@ -4459,44 +4573,10 @@ watch(
     gap: 4px;
   }
 
-  /* Terminal subtabs - hide on mobile */
-  .terminal-subtabs {
-    display: none !important;
-  }
-
-  /* Hide all terminal labels on mobile - icon only */
-  .terminal-label-desktop {
-    display: none !important;
-  }
-
-  .terminal-label-mobile {
-    display: none !important;
-  }
-
   /* Branch - smaller max width on mobile */
   .toolbar-item.branch {
     max-width: 180px;
   }
-}
-
-/* Tablet (640px - 1024px) - show Terminal label, hide Active/History label */
-@media (min-width: 640px) and (max-width: 1024px) {
-  .terminal-label-desktop {
-    display: inline !important;
-  }
-
-  .terminal-label-mobile {
-    display: none !important;
-  }
-}
-
-/* Desktop - show Terminal label, hide Active/History label */
-.terminal-label-mobile {
-  display: none;
-}
-
-.terminal-label-desktop {
-  display: inline;
 }
 
 /* Memo Modal/Sidebar */

@@ -693,6 +693,30 @@ export function useChatWebSocket() {
         // Terminal counts are now broadcast globally, no need to update here
         break;
 
+      case 'terminal:watch:tick':
+        // A watch tick spawns a new process for the same bookmark each time.
+        // Replace any existing watch process for this bookmark so the Active tab
+        // always shows the latest run (not stale entries from previous ticks).
+        if (msg.projectSlug === currentProject.value?.slug) {
+          const bookmarkId = msg.process.watchBookmarkId;
+          const without = terminalProcesses.value.filter(
+            (p) => !(p.isWatch && p.watchBookmarkId === bookmarkId),
+          );
+          terminalProcesses.value = [...without, msg.process];
+        }
+        break;
+
+      case 'terminal:processes:update':
+        // Update an existing process in the list (e.g. watch tick exit status).
+        // For watch processes: keep them after exit so the last output stays
+        // visible between ticks. The next terminal:watch:tick will replace them.
+        if (msg.projectSlug === currentProject.value?.slug) {
+          terminalProcesses.value = terminalProcesses.value.map((p) =>
+            p.id === msg.process.id ? { ...p, ...msg.process } : p,
+          );
+        }
+        break;
+
       case 'terminal:output': {
         const proc = terminalProcesses.value.find(
           (p) => p.id === msg.processId,
@@ -879,10 +903,14 @@ export function useChatWebSocket() {
     send({ type: 'terminal:exec', command, cwd });
   }
 
-  function killProcess(processId, signal) {
+  function killProcess(processId, signal, skipRefresh = false) {
     send({ type: 'terminal:kill', processId, signal });
-    // Refresh process list after a short delay to reflect the change
-    setTimeout(() => listProcesses(), 100);
+    // Refresh process list after a short delay to reflect the change.
+    // Skip for watch processes — they manage state via terminal:watch:* events,
+    // and the full-list replace from listProcesses() races with those broadcasts.
+    if (!skipRefresh) {
+      setTimeout(() => listProcesses(), 100);
+    }
   }
 
   function listProcesses() {
@@ -891,6 +919,16 @@ export function useChatWebSocket() {
 
   function clearTerminal(processId) {
     send({ type: 'terminal:clear', processId });
+  }
+
+  // Remove all process entries for a stopped watch bookmark.
+  // Called when a watch is stopped (Stop or Kill) so entries are cleaned up immediately.
+  // Removes regardless of status — a killed running process won't emit exit events
+  // because watchManager removes the listener before killing.
+  function removeWatchProcess(bookmarkId) {
+    terminalProcesses.value = terminalProcesses.value.filter(
+      (p) => !(p.isWatch && p.watchBookmarkId === bookmarkId),
+    );
   }
 
   function answerQuestion(toolUseId, answers) {
@@ -976,6 +1014,7 @@ export function useChatWebSocket() {
     killProcess,
     listProcesses,
     clearTerminal,
+    removeWatchProcess,
 
     // Task status
     clearTaskStatus,

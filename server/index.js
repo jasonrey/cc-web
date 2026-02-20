@@ -45,6 +45,13 @@ async function gracefulShutdown(signal) {
     stopVersionChecker();
     logger.log('Stopped version checker');
 
+    // Clean up watch manager (stop all intervals before process manager)
+    const watchManager = (await import('./lib/watchManager.js')).default;
+    if (watchManager.destroy) {
+      watchManager.destroy();
+      logger.log('Cleaned up watch manager');
+    }
+
     // Clean up process manager
     const processManager = (await import('./lib/processManager.js')).default;
     if (processManager.destroy) {
@@ -446,6 +453,16 @@ async function onServerReady() {
   }
   if (process.env.DEBUG === 'true') {
     logger.log('🐛 DEBUG mode enabled - logging to tofucode.log');
+  }
+
+  // Resume watch-enabled bookmarks from disk
+  try {
+    const { loadBookmarks } = await import('./lib/terminal-bookmarks.js');
+    const watchManager = (await import('./lib/watchManager.js')).default;
+    watchManager.loadFromBookmarks(loadBookmarks());
+    logger.log('Watch manager initialized');
+  } catch (err) {
+    logger.error('Error initializing watch manager:', err);
   }
 
   // Start Discord bot

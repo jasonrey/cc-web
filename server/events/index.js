@@ -41,6 +41,12 @@ import {
   killHandler as terminalKill,
   listHandler as terminalList,
 } from './terminal.js';
+import {
+  addHandler as terminalBookmarkAdd,
+  getHandler as terminalBookmarkGet,
+  removeHandler as terminalBookmarkRemove,
+} from './terminal-bookmarks.js';
+import { watchUpdateHandler as terminalWatchUpdate } from './terminal-watch.js';
 import { handler as updateSettings } from './update-settings.js';
 import { handleUpgrade } from './upgrade.js';
 
@@ -65,6 +71,10 @@ export const handlers = {
   'terminal:kill': terminalKill,
   'terminal:list': terminalList,
   'terminal:clear': terminalClear,
+  'terminal:get_bookmarks': terminalBookmarkGet,
+  'terminal:add_bookmark': terminalBookmarkAdd,
+  'terminal:remove_bookmark': terminalBookmarkRemove,
+  'terminal:watch:update': terminalWatchUpdate,
   'files:browse': handleFilesBrowse,
   'files:read': handleFilesRead,
   'files:write': handleFilesWrite,

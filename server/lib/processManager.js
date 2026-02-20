@@ -145,7 +145,10 @@ class ProcessManager {
    * Uses the user's default shell with interactive mode to load rc files
    * @returns {ProcessEntry}
    */
-  spawn(projectSlug, { command, cwd }) {
+  spawn(
+    projectSlug,
+    { command, cwd, isWatch, watchBookmarkId, watchBookmarkScope, watchMode },
+  ) {
     const id = randomUUID();
     const projectProcesses = this.getProject(projectSlug);
 
@@ -176,6 +179,10 @@ class ProcessManager {
       output: [], // Array of { stream, text, ts }
       startedAt: Date.now(),
       endedAt: null,
+      isWatch: isWatch ?? false,
+      watchBookmarkId: watchBookmarkId ?? null,
+      watchBookmarkScope: watchBookmarkScope ?? null,
+      watchMode: watchMode ?? null,
     };
 
     projectProcesses.set(id, entry);
@@ -391,6 +398,10 @@ class ProcessManager {
       output: entry.output,
       startedAt: entry.startedAt,
       endedAt: entry.endedAt,
+      isWatch: entry.isWatch ?? false,
+      watchBookmarkId: entry.watchBookmarkId ?? null,
+      watchBookmarkScope: entry.watchBookmarkScope ?? null,
+      watchMode: entry.watchMode ?? null,
     };
   }
 

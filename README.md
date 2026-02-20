@@ -217,7 +217,7 @@ Docker provides OS-level isolation that cannot be bypassed. See the [Docker Guid
 
 ### Core
 - **Chat Interface** - Markdown rendering, syntax highlighting, collapsible tool outputs
-- **Terminal Mode** - Shell commands with streaming output and history
+- **Terminal Mode** - Shell commands with streaming output, history, bookmarks, and process watch mode
 - **Files Mode** - Browse, edit, and preview files (markdown, CSV, images)
 - **Session Management** - Multiple sessions with quick switcher (Cmd+K)
 - **Permission Modes** - Control Claude's access (Default/Plan/Bypass/Skip)

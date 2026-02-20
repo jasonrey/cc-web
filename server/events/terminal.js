@@ -7,7 +7,9 @@
 import path from 'node:path';
 import { config, slugToPath } from '../config.js';
 import processManager from '../lib/processManager.js';
+import { updateBookmarkWatch } from '../lib/terminal-bookmarks.js';
 import { getTerminalCounts } from '../lib/terminalUtils.js';
+import watchManager from '../lib/watchManager.js';
 import { broadcast, send } from '../lib/ws.js';
 
 // Debounce timer for terminal count broadcasts
@@ -166,6 +168,8 @@ export function killHandler(ws, message, context) {
     return;
   }
 
+  const entry = processManager.getProcess(projectSlug, processId);
+
   const killed = processManager.kill(
     projectSlug,
     processId,
@@ -177,6 +181,33 @@ export function killHandler(ws, message, context) {
     processId,
     success: killed,
   });
+
+  // If this was a watch process, permanently disable the watch
+  if (entry?.watchBookmarkId) {
+    watchManager.stopWatch(entry.watchBookmarkId);
+
+    // Use the scope stored on the process entry at spawn time — avoids
+    // having to re-query bookmarks and mis-scoping if the bookmark was deleted
+    const scope = entry.watchBookmarkScope ?? 'project';
+
+    const updatedBookmarks = updateBookmarkWatch(
+      scope,
+      projectSlug,
+      entry.watchBookmarkId,
+      {
+        enabled: false,
+        interval: 10,
+        mode: entry.watchMode || 'stdout',
+      },
+    );
+
+    // Broadcast updated bookmarks and watch state to all clients
+    broadcast({ type: 'terminal:bookmarks', projectSlug, ...updatedBookmarks });
+    broadcast({
+      type: 'terminal:watch:state',
+      active: watchManager.getActiveWatchIds(),
+    });
+  }
 }
 
 /**
