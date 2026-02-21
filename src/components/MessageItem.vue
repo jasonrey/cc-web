@@ -12,6 +12,20 @@ const emit = defineEmits(['answer-question']);
 
 const resultExpanded = ref(false);
 const finalResultExpanded = ref(false);
+const copySuccess = ref(false);
+
+async function copyMessageContent() {
+  const content = props.message.content || '';
+  try {
+    await navigator.clipboard.writeText(content);
+    copySuccess.value = true;
+    setTimeout(() => {
+      copySuccess.value = false;
+    }, 2000);
+  } catch (err) {
+    console.error('Failed to copy message:', err);
+  }
+}
 
 // Format timestamp for display
 const formattedTimestamp = computed(() => {
@@ -204,6 +218,15 @@ function togglePlanExpand() {
       <div class="content markdown-body" v-html="renderedUserContent"></div>
       <div class="message-footer">
         <span class="timestamp" v-if="formattedTimestamp" :title="fullTimestamp">{{ formattedTimestamp }}</span>
+        <button class="msg-copy-btn" :class="{ copied: copySuccess }" @click="copyMessageContent" title="Copy message">
+          <svg v-if="!copySuccess" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+          <svg v-else width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </button>
         <span class="permission-icon" :title="'Permission mode: ' + (userPermissionMode || 'default')" v-html="permissionIcon"></span>
       </div>
     </div>
@@ -213,6 +236,15 @@ function togglePlanExpand() {
       <div class="content markdown-body" v-html="renderedMarkdown"></div>
       <div class="text-footer">
         <span class="timestamp text-timestamp" v-if="formattedTimestamp" :title="fullTimestamp">{{ formattedTimestamp }}</span>
+        <button class="msg-copy-btn" :class="{ copied: copySuccess }" @click="copyMessageContent" title="Copy message">
+          <svg v-if="!copySuccess" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+          <svg v-else width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </button>
         <span class="model-badge" :title="'Model: ' + modelDisplayName">{{ modelDisplayName }}</span>
       </div>
     </div>
@@ -395,6 +427,34 @@ function togglePlanExpand() {
   justify-content: flex-end;
   gap: 8px;
   margin-top: 4px;
+}
+
+.msg-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 4px;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.msg-copy-btn:hover {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+.msg-copy-btn.copied {
+  color: var(--success-color);
+}
+
+.user-message:hover .msg-copy-btn,
+.text-message:hover .msg-copy-btn {
+  opacity: 1;
 }
 
 .model-badge {
