@@ -49,6 +49,15 @@ async function searchFiles(
   const isGlob = isGlobPattern(query);
   const globRegex = isGlob ? globToRegex(query) : null;
 
+  // Normalize separators (space, underscore, hyphen, slash) → single space.
+  // Applied to both the query tokens and the target strings so that
+  // "feature mcp" matches "FEATURE_MCP.md", "docs api" matches "docs/api/file.md", etc.
+  const normalize = (s) => s.replace(/[\s_\-/]+/g, ' ').trim();
+
+  // Split query into tokens on whitespace. Multi-token queries require ALL tokens
+  // to appear somewhere in the normalized target (AND semantics).
+  const tokens = lowerQuery.trim().split(/\s+/).filter(Boolean);
+
   // Common directories to skip
   const skipDirs = new Set([
     'node_modules',
@@ -87,14 +96,26 @@ async function searchFiles(
         const relativePath = path.relative(basePath, fullPath);
         const fileName = entry.name.toLowerCase();
 
+        // Normalised forms used for separator-agnostic matching
+        const normFileName = normalize(fileName);
+        const normRelative = normalize(
+          relativePath.split(path.sep).join('/').toLowerCase(),
+        );
+
+        // Returns true if every query token appears in the given normalised string
+        const allTokensIn = (target) =>
+          tokens.every((t) => target.includes(normalize(t)));
+
         // Check if filename matches search criteria
         let filenameMatches = false;
 
         if (isGlob) {
-          // Glob pattern matching (only against filename)
           filenameMatches = globRegex.test(entry.name);
+        } else if (tokens.length > 1) {
+          // Multi-token: all tokens must appear in the normalised filename
+          filenameMatches = allTokensIn(normFileName);
         } else {
-          // Fuzzy match: check if all query chars appear in order
+          // Single token: fuzzy char-order match against raw filename
           let queryIndex = 0;
           for (const char of fileName) {
             if (char === lowerQuery[queryIndex]) {
@@ -103,15 +124,40 @@ async function searchFiles(
             }
           }
           filenameMatches = queryIndex === lowerQuery.length;
+          // Also try normalised substring (e.g. "feat_mcp" → "feat mcp" in normFileName)
+          if (!filenameMatches) {
+            filenameMatches = normFileName.includes(normalize(lowerQuery));
+          }
         }
 
-        // Check if any folder in the path matches (for files inside matching folders)
+        // Check if the full relative path matches.
+        // Single-token: substring on raw path (preserves "docs/api" → "docs/api/file.md").
+        // Multi-token: all tokens must appear in the normalised path.
+        let fullPathMatches = false;
+        if (!isGlob) {
+          const rawRelative = relativePath
+            .split(path.sep)
+            .join('/')
+            .toLowerCase();
+          if (tokens.length > 1) {
+            fullPathMatches = allTokensIn(normRelative);
+          } else {
+            fullPathMatches =
+              rawRelative.includes(lowerQuery) ||
+              normRelative.includes(normalize(lowerQuery));
+          }
+        }
+
+        // Fallback: fuzzy match any single parent folder name (single-token only)
         let folderPathMatches = false;
-        if (!isGlob && !entry.isDirectory()) {
-          // For files, check if any parent folder name matches the query
+        if (
+          !isGlob &&
+          !entry.isDirectory() &&
+          !fullPathMatches &&
+          tokens.length === 1
+        ) {
           const pathParts = relativePath.split(path.sep);
           for (let i = 0; i < pathParts.length - 1; i++) {
-            // Check each folder name (exclude the file name itself)
             const folderName = pathParts[i].toLowerCase();
             let queryIndex = 0;
             for (const char of folderName) {
@@ -127,7 +173,7 @@ async function searchFiles(
           }
         }
 
-        const matches = filenameMatches || folderPathMatches;
+        const matches = filenameMatches || fullPathMatches || folderPathMatches;
 
         if (entry.isDirectory()) {
           // Add matching directories to results
@@ -152,7 +198,11 @@ async function searchFiles(
               relativePath,
               directory: path.dirname(relativePath),
               isDirectory: false,
-              matchType: filenameMatches ? 'filename' : 'folderpath',
+              matchType: filenameMatches
+                ? 'filename'
+                : fullPathMatches
+                  ? 'fullpath'
+                  : 'folderpath',
             });
           }
         }
@@ -170,10 +220,11 @@ async function searchFiles(
     if (a.isDirectory && !b.isDirectory) return -1;
     if (!a.isDirectory && b.isDirectory) return 1;
 
-    // For files, prioritize filename matches over folder path matches
+    // For files, prioritize: filename > fullpath > folderpath
     if (!a.isDirectory && !b.isDirectory) {
-      if (a.matchType === 'filename' && b.matchType === 'folderpath') return -1;
-      if (a.matchType === 'folderpath' && b.matchType === 'filename') return 1;
+      const rank = { filename: 0, fullpath: 1, folderpath: 2 };
+      const diff = (rank[a.matchType] ?? 2) - (rank[b.matchType] ?? 2);
+      if (diff !== 0) return diff;
     }
 
     // Alphabetically by name

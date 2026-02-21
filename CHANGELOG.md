@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Terminal watch mode** — Schedule a bookmarked command to re-run at a set interval; output renders as a table or raw stdout in the Active tab
 - **Copy message button** — Hover over any user or Claude message to reveal a copy icon; copies raw markdown content to clipboard (not rendered HTML), with a 2-second checkmark feedback
 - **MCP Server Manager** — Dedicated modal (plug icon in sidebar) to view, add, edit, and remove MCP servers across all config scopes (local, project, user)
+- **Enhanced file picker search** — Cmd+P now matches across full relative paths and normalises word separators
+  - Path substring: `docs/api` matches `docs/api/episodes.md` and `docs/api/profile.md`
+  - Multi-token AND: `feature mcp` matches `FEATURE_MCP.md` (spaces match `_`, `-`, `/`)
+  - Separator-agnostic: `feature_mcp`, `feature-mcp`, and `feature mcp` all find the same files
+  - Match highlighted in the path row when matched via full path
   - HTTP/SSE servers: full CRUD with inline test connection (MCP handshake, status-aware result display)
   - Stdio servers: full config CRUD (command, args, env vars); binary installation is user's responsibility
   - OAuth-managed servers: read-only display with expiry badge and CLI reconfiguration hint

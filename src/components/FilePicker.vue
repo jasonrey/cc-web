@@ -188,9 +188,14 @@ function handleReference(event, file) {
   emit('close'); // Close picker after referencing
 }
 
-// Highlight matching characters in filename
+// Normalize word separators for flexible matching (mirrors backend logic)
+function normalizeSeps(s) {
+  return s.replace(/[\s_\-/]+/g, ' ').trim();
+}
+
+// Highlight matching characters in filename (fuzzy, char-by-char)
 function highlightMatch(text, query) {
-  if (!query) return [{ text, match: false }]; // Return array with single part
+  if (!query) return [{ text, match: false }];
 
   const lowerText = text.toLowerCase();
   const lowerQuery = query.toLowerCase();
@@ -200,24 +205,79 @@ function highlightMatch(text, query) {
 
   for (let i = 0; i < text.length; i++) {
     if (lowerText[i] === lowerQuery[queryIndex]) {
-      // Add text before match
       if (i > lastIndex) {
         parts.push({ text: text.slice(lastIndex, i), match: false });
       }
-      // Add matched character
       parts.push({ text: text[i], match: true });
       lastIndex = i + 1;
       queryIndex++;
-
       if (queryIndex === lowerQuery.length) break;
     }
   }
 
-  // Add remaining text
   if (lastIndex < text.length) {
     parts.push({ text: text.slice(lastIndex), match: false });
   }
 
+  return parts;
+}
+
+// Highlight a substring match within a path string (used for fullpath match type).
+// Tries exact substring first; falls back to normalized separator matching.
+function highlightPathMatch(text, query) {
+  if (!query) return [{ text, match: false }];
+
+  const lowerText = text.toLowerCase();
+  const lowerQuery = query.toLowerCase();
+
+  // Try exact substring match first
+  const idx = lowerText.indexOf(lowerQuery);
+  if (idx !== -1) {
+    const parts = [];
+    if (idx > 0) parts.push({ text: text.slice(0, idx), match: false });
+    parts.push({ text: text.slice(idx, idx + lowerQuery.length), match: true });
+    if (idx + lowerQuery.length < text.length) {
+      parts.push({ text: text.slice(idx + lowerQuery.length), match: false });
+    }
+    return parts;
+  }
+
+  // Fall back: find the normalized query inside the normalized text, then map
+  // character ranges back to the original string for highlighting.
+  const normQuery = normalizeSeps(lowerQuery);
+  const normText = normalizeSeps(lowerText);
+  const normIdx = normText.indexOf(normQuery);
+  if (normIdx === -1) return [{ text, match: false }];
+
+  // Map normalized index back to original: count non-separator chars
+  // Build a map: normText[i] → original index of that char
+  const normToOrig = [];
+  let ni = 0;
+  let prevWasSep = false;
+  for (let oi = 0; oi < lowerText.length; oi++) {
+    const isSep = /[\s_\-/]/.test(lowerText[oi]);
+    if (isSep) {
+      if (!prevWasSep) {
+        normToOrig[ni] = oi; // the single space in normText maps here
+        ni++;
+      }
+      prevWasSep = true;
+    } else {
+      normToOrig[ni] = oi;
+      ni++;
+      prevWasSep = false;
+    }
+  }
+
+  const origStart = normToOrig[normIdx] ?? 0;
+  const origEnd = normToOrig[normIdx + normQuery.length - 1] ?? text.length - 1;
+
+  const parts = [];
+  if (origStart > 0)
+    parts.push({ text: text.slice(0, origStart), match: false });
+  parts.push({ text: text.slice(origStart, origEnd + 1), match: true });
+  if (origEnd + 1 < text.length)
+    parts.push({ text: text.slice(origEnd + 1), match: false });
   return parts;
 }
 </script>
@@ -270,11 +330,16 @@ function highlightMatch(text, query) {
 					>
 						<div class="picker-item-content">
 							<div class="picker-item-name">
-								<template v-for="(part, i) in highlightMatch(file.displayName, searchQuery)" :key="i">
+								<template v-for="(part, i) in highlightMatch(file.displayName, file.matchType === 'fullpath' ? '' : searchQuery)" :key="i">
 									<span :class="{ 'match-highlight': part.match }">{{ part.text }}</span>
 								</template>
 							</div>
-							<div class="picker-item-path">{{ file.directory }}</div>
+							<div class="picker-item-path">
+								<template v-if="file.matchType === 'fullpath'" v-for="(part, i) in highlightPathMatch(file.relativePath?.split('\\').join('/') || file.directory, searchQuery)" :key="i">
+									<span :class="{ 'match-highlight': part.match }">{{ part.text }}</span>
+								</template>
+								<template v-else>{{ file.directory }}</template>
+							</div>
 						</div>
 
 						<!-- Reference button (only for files, not folders) -->
